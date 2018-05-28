@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/myntra/shuttle-engine/config"
 	"github.com/myntra/shuttle-engine/helpers"
 	"github.com/myntra/shuttle-engine/types"
 	r "gopkg.in/gorethink/gorethink.v4"
@@ -34,14 +35,9 @@ func executeHandler(w http.ResponseWriter, r *http.Request) {
 // InsertSteps ...
 func InsertSteps(workloadDetails types.WorkloadDetails) {
 	workloadDetails.ImageList = map[int]string{}
-	rdbSession, err := r.Connect(r.ConnectOpts{
-		Address:  "localhost:28015",
-		Database: "shuttleservices",
-	})
-	helpers.FailOnErr(err)
 	cursor, err := r.Table(workloadDetails.Stage + "_configs").Filter(map[string]interface{}{
 		"id": workloadDetails.Repo + "-" + workloadDetails.DstBranch,
-	}).Run(rdbSession)
+	}).Run(config.ShuttleRethinkSession)
 	helpers.FailOnErr(err)
 	defer cursor.Close()
 	var yamlFromRethink types.YAMLFromRethink
@@ -103,7 +99,7 @@ func InsertSteps(workloadDetails types.WorkloadDetails) {
 						if !foundAnIncompleteRequiredStep {
 							workloadDetails.WorkloadID = workloadDetails.ID + "-" + strconv.Itoa(index)
 							workloadDetails.Task = singleStep.Task
-							workloadDetails.RegistryURL = "localhub.myntra.com:5000"
+							workloadDetails.RegistryURL = config.BuildHub
 							if singleStep.Meta.Image != "" {
 								if imageIndex, err := strconv.Atoi(singleStep.Meta.Image); err == nil {
 									workloadDetails.Image = workloadDetails.ImageList[imageIndex]
@@ -119,7 +115,7 @@ func InsertSteps(workloadDetails types.WorkloadDetails) {
 							}
 							workloadDetails.CommitContainer = singleStep.CommitContainer
 							// Trigger the API call to kuborch
-							_, err := helpers.Post("http://localhost:5600/executeworkload", workloadDetails, nil)
+							_, err := helpers.Post(config.KuborchURL+"/executeworkload", workloadDetails, nil)
 							helpers.FailOnErr(err)
 							go func(index int, workloadDetails types.WorkloadDetails) {
 								MapOfDeleteChannels[workloadDetails.WorkloadID] = make(chan types.WorkloadResult)

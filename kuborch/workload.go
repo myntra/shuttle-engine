@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"strconv"
 
+	"github.com/myntra/shuttle-engine/config"
 	"github.com/myntra/shuttle-engine/helpers"
 	"github.com/myntra/shuttle-engine/types"
 
@@ -25,15 +26,10 @@ func executeWorkload(w http.ResponseWriter, req *http.Request) {
 	workloadDetails := types.WorkloadDetails{}
 	helpers.PanicOnErrorAPI(helpers.ParseRequest(req, &workloadDetails), w)
 	// Fetch yaml from predefined_steps table
-	rdbSession, err := r.Connect(r.ConnectOpts{
-		Address:  "localhost:28015",
-		Database: "shuttleservices",
-	})
-	helpers.PanicOnErrorAPI(err, w)
 	// log.Println(workloadDetails)
 	cursor, err := r.Table("predefined_steps").Filter(map[string]interface{}{
 		"name": workloadDetails.Task,
-	}).Run(rdbSession)
+	}).Run(config.ShuttleRethinkSession)
 	helpers.PanicOnErrorAPI(err, w)
 	defer cursor.Close()
 	var yamlFromRethink types.YAMLFromRethink
@@ -113,7 +109,7 @@ func runKubeCTL(workloadName, workloadPath, workloadID string) {
 						workloadResult.Result = "Succeeded"
 					}
 					log.Println("Hitting API")
-					_, err := helpers.Post("http://localhost:5500/callback", workloadResult, nil)
+					_, err := helpers.Post(config.FloworchURL+"/callback", workloadResult, nil)
 					if err != nil {
 						log.Println(err)
 					}
