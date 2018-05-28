@@ -2,59 +2,96 @@ package config
 
 import (
 	"flag"
+	"fmt"
+	"io/ioutil"
 	"log"
+	"os"
 
 	r "gopkg.in/gorethink/gorethink.v4"
+	yaml "gopkg.in/yaml.v1"
 )
 
 //Port ...
 var Port int
 
-//ShuttleRethinkSession ...
-var ShuttleRethinkSession *r.Session
+//RethinkSession ...
+var RethinkSession *r.Session
 
-//BuildHub ...
-var BuildHub string
+// ConfigYamlFolder config file folder
+var ConfigYamlFolder = ""
 
-//KuborchURL ...
-var KuborchURL string
+// ConfigYaml config filename
+var ConfigYaml = "config.yaml"
 
-//FloworchURL ...
-var FloworchURL string
+// Env Environment running in - dev or production. production is default
+var Env = os.Getenv("ENV")
 
-//KubConfigPath ...
-var KubConfigPath string
+//Config ...
+type Config struct {
+	Port          int    `yaml:"port"`
+	BuildHubURL   string `yaml:"buildHubURL"`
+	KuborchURL    string `yaml:"kuborchURL"`
+	FloworchURL   string `yaml:"floworchURL"`
+	KubConfigPath string `yaml:"kubConfigPath"`
+	RethinkHost   string `yaml:"rethinkHost"`
+	RethinkDB     string `yaml:"rethinkDB"`
+}
+
+var config Config
 
 //InitFlags ...
 func InitFlags() {
 	flag.IntVar(&Port, "Port", 0, "Port On which Service Listens")
-	flag.StringVar(&BuildHub, "BuildHub", "buildhub.myntra.com", "build hub")
-	flag.StringVar(&KuborchURL, "KuborchURL", "kuborch.myntra.com", "KuborchURL")
-	flag.StringVar(&FloworchURL, "FloworchURL", "floworch.myntra.com", "FloworchURL")
-	flag.StringVar(&KubConfigPath, "KubConfigPath", "~/.kube/config", "Path to kube config")
 	flag.Parse()
 }
 
-//InitShuttleRethinkDBSession ...
-func InitShuttleRethinkDBSession() error {
-
-	log.Printf("InitShuttleRethinkDBSession:dockinsrethink.myntra.com")
+//InitRethinkDBSession ...
+func InitRethinkDBSession(host, dbName string) error {
+	log.Printf("InitRethinkDBSession:%s", host)
 	session, err := r.Connect(r.ConnectOpts{
-		Address:  "dockinsrethink.myntra.com:28015",
-		Database: "shuttleservices",
+		Address:  host,
+		Database: dbName,
 		MaxIdle:  10,
 		MaxOpen:  10,
 	})
 
 	if err != nil {
-		log.Println("Cannot connect to rethinkdb. Exiting...")
+		log.Printf("Cannot connect to rethinkdb. Exiting...,Error: %s", err)
 		return err
 	}
 
 	session.SetMaxOpenConns(10)
 
-	ShuttleRethinkSession = session
+	RethinkSession = session
 
 	return nil
+}
 
+// ReadConfig read configYaml
+func ReadConfig() error {
+	//unmarshal config.yaml
+	log.Println("Env : " + Env)
+	if Env == "dev" {
+		ConfigYaml = "config_dev.yaml"
+	}
+
+	config = Config{}
+	configData, err := ioutil.ReadFile(ConfigYamlFolder + ConfigYaml)
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+	err = yaml.Unmarshal([]byte(configData), &config)
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+
+	return nil
+}
+
+// GetConfig ...
+func GetConfig() Config {
+
+	return config
 }

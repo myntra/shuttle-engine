@@ -29,7 +29,7 @@ func executeWorkload(w http.ResponseWriter, req *http.Request) {
 	// log.Println(workloadDetails)
 	cursor, err := r.Table("predefined_steps").Filter(map[string]interface{}{
 		"name": workloadDetails.Task,
-	}).Run(config.ShuttleRethinkSession)
+	}).Run(config.RethinkSession)
 	helpers.PanicOnErrorAPI(err, w)
 	defer cursor.Close()
 	var yamlFromRethink types.YAMLFromRethink
@@ -109,7 +109,7 @@ func runKubeCTL(workloadName, workloadPath, workloadID string) {
 						workloadResult.Result = "Succeeded"
 					}
 					log.Println("Hitting API")
-					_, err := helpers.Post(config.FloworchURL+"/callback", workloadResult, nil)
+					_, err := helpers.Post(config.GetConfig().FloworchURL+"/callback", workloadResult, nil)
 					if err != nil {
 						log.Println(err)
 					}

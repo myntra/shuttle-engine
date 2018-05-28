@@ -16,20 +16,22 @@ import (
 var Clientset *kubernetes.Clientset
 
 func main() {
-	config.InitFlags()
-
-	err := config.InitShuttleRethinkDBSession()
-	if err != nil {
-		helpers.FailOnErr(err)
+	// load config.yml
+	if err := config.ReadConfig(); err != nil {
 		return
 	}
-	cfg, err := clientcmd.BuildConfigFromFlags("", config.KubConfigPath)
+
+	if err := config.InitRethinkDBSession(config.GetConfig().RethinkHost,
+		config.GetConfig().RethinkDB); err != nil {
+		return
+	}
+	cfg, err := clientcmd.BuildConfigFromFlags("", config.GetConfig().KubConfigPath)
 	helpers.FailOnErr(err)
 	Clientset, err = kubernetes.NewForConfig(cfg)
 	helpers.FailOnErr(err)
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
-	log.Printf("Starting up the server at %d", config.Port)
+	log.Printf("Starting up the server at %d", config.GetConfig().Port)
 	router := mux.NewRouter()
 	router.HandleFunc("/executeworkload", executeWorkload).Methods("Post")
-	log.Fatal(http.ListenAndServe(":"+strconv.Itoa(config.Port), router))
+	log.Fatal(http.ListenAndServe(":"+strconv.Itoa(config.GetConfig().Port), router))
 }

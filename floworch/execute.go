@@ -37,7 +37,7 @@ func InsertSteps(workloadDetails types.WorkloadDetails) {
 	workloadDetails.ImageList = map[int]string{}
 	cursor, err := r.Table(workloadDetails.Stage + "_configs").Filter(map[string]interface{}{
 		"id": workloadDetails.Repo + "-" + workloadDetails.DstBranch,
-	}).Run(config.ShuttleRethinkSession)
+	}).Run(config.RethinkSession)
 	helpers.FailOnErr(err)
 	defer cursor.Close()
 	var yamlFromRethink types.YAMLFromRethink
@@ -99,7 +99,7 @@ func InsertSteps(workloadDetails types.WorkloadDetails) {
 						if !foundAnIncompleteRequiredStep {
 							workloadDetails.WorkloadID = workloadDetails.ID + "-" + strconv.Itoa(index)
 							workloadDetails.Task = singleStep.Task
-							workloadDetails.RegistryURL = config.BuildHub
+							workloadDetails.RegistryURL = config.GetConfig().BuildHubURL
 							if singleStep.Meta.Image != "" {
 								if imageIndex, err := strconv.Atoi(singleStep.Meta.Image); err == nil {
 									workloadDetails.Image = workloadDetails.ImageList[imageIndex]
@@ -115,7 +115,7 @@ func InsertSteps(workloadDetails types.WorkloadDetails) {
 							}
 							workloadDetails.CommitContainer = singleStep.CommitContainer
 							// Trigger the API call to kuborch
-							_, err := helpers.Post(config.KuborchURL+"/executeworkload", workloadDetails, nil)
+							_, err := helpers.Post(config.GetConfig().KuborchURL+"/executeworkload", workloadDetails, nil)
 							helpers.FailOnErr(err)
 							go func(index int, workloadDetails types.WorkloadDetails) {
 								MapOfDeleteChannels[workloadDetails.WorkloadID] = make(chan types.WorkloadResult)
