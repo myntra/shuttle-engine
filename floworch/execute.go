@@ -1,18 +1,20 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"html/template"
 	"log"
 	"net/http"
 	"regexp"
 	"strconv"
 	"time"
 
+	"github.com/ghodss/yaml"
 	"github.com/myntra/shuttle-engine/helpers"
 	"github.com/myntra/shuttle-engine/types"
 	r "gopkg.in/gorethink/gorethink.v4"
-	yaml "gopkg.in/yaml.v1"
 )
 
 func executeHandler(w http.ResponseWriter, r *http.Request) {
@@ -31,11 +33,10 @@ func executeHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(inBytes)
 }
 
-// InsertSteps ...
-func InsertSteps(workloadDetails types.WorkloadDetails) {
+func procureContent(workloadDetails types.WorkloadDetails) []types.Step {
 	workloadDetails.ImageList = map[int]string{}
 	rdbSession, err := r.Connect(r.ConnectOpts{
-		Address:  "localhost:28015",
+		Address:  "dockinsrethink.myntra.com:28015",
 		Database: "shuttleservices",
 	})
 	helpers.FailOnErr(err)
@@ -47,30 +48,30 @@ func InsertSteps(workloadDetails types.WorkloadDetails) {
 	var yamlFromRethink types.YAMLFromRethink
 	err = cursor.One(&yamlFromRethink)
 	helpers.FailOnErr(err)
+	// Replacing variables
+	err = replaceVariables(&yamlFromRethink, workloadDetails)
+	helpers.FailOnErr(err)
 	// Extracting yaml into json
 	reg := regexp.MustCompile("- id:")
 	matches := reg.FindAllStringIndex(yamlFromRethink.Config, -1)
 	log.Println(yamlFromRethink.Config)
 	stageSteps := make([]types.Step, len(matches))
 	err = yaml.Unmarshal([]byte(yamlFromRethink.Config), &stageSteps)
-	log.Println(stageSteps)
 	helpers.FailOnErr(err)
-	// Fetch all step details
-	// for index, singleStep := range stageSteps {
-	// 	if singleStep.Task != "custom" {
-	// 		// Hit a rethnkdb API to get predefined step details from DB
-	// 		cursor, err = r.Table("predefined_steps").Filter(map[string]interface{}{
-	// 			"name": singleStep.Task,
-	// 		}).Run(rdbSession)
-	// 		helpers.FailOnErr(err)
-	// 		var stepDetails types.StepDetails
-	// 		err = cursor.One(&stepDetails)
-	// 		helpers.FailOnErr(err)
-	// 		defer cursor.Close()
-	// 		// Set detail with exact details
-	// 		stageSteps[index].StepDetails = stepDetails
-	// 	}
-	// }
+	return stageSteps
+}
+
+func replaceVariables(yfr *types.YAMLFromRethink, wd types.WorkloadDetails) error {
+	configBuf := new(bytes.Buffer)
+	tmpl := template.Must(template.New("replaceFromAPI").Parse(yfr.Config))
+	err := tmpl.Execute(configBuf, wd)
+	yfr.Config = configBuf.String()
+	return err
+}
+
+// InsertSteps ...
+func InsertSteps(workloadDetails types.WorkloadDetails) {
+	stageSteps := procureContent(workloadDetails)
 	completedSteps := map[int]bool{}
 	interval := 5
 	tick := time.Tick(time.Duration(interval) * time.Second)
@@ -103,7 +104,10 @@ func InsertSteps(workloadDetails types.WorkloadDetails) {
 						if !foundAnIncompleteRequiredStep {
 							workloadDetails.WorkloadID = workloadDetails.ID + "-" + strconv.Itoa(index)
 							workloadDetails.Task = singleStep.Task
-							workloadDetails.RegistryURL = "localhub.myntra.com:5000"
+							workloadDetails.RegistryURL = "buildhub.myntra.com:5000"
+							customPropertiesInBytes, err := json.Marshal(singleStep.Meta.CustomProperties)
+							helpers.FailOnErr(err)
+							workloadDetails.CustomProperties = string(customPropertiesInBytes)
 							if singleStep.Meta.Image != "" {
 								if imageIndex, err := strconv.Atoi(singleStep.Meta.Image); err == nil {
 									workloadDetails.Image = workloadDetails.ImageList[imageIndex]
@@ -119,7 +123,7 @@ func InsertSteps(workloadDetails types.WorkloadDetails) {
 							}
 							workloadDetails.CommitContainer = singleStep.CommitContainer
 							// Trigger the API call to kuborch
-							_, err := helpers.Post("http://localhost:5600/executeworkload", workloadDetails, nil)
+							_, err = helpers.Post("http://localhost:5600/executeworkload", workloadDetails, nil)
 							helpers.FailOnErr(err)
 							go func(index int, workloadDetails types.WorkloadDetails) {
 								MapOfDeleteChannels[workloadDetails.WorkloadID] = make(chan types.WorkloadResult)

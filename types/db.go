@@ -14,10 +14,16 @@ type Step struct {
 	CommitContainer bool   `yaml:"commitContainer"`
 	Requires        []int  `yaml:"requires"`
 	Status          string `yaml:"status"`
-	// StepDetails     StepDetails `yaml:"stepDetails"`
 }
+
+// // CustomProperty ...
+// type CustomProperty struct {
+// 	Key   string      `yaml:"key"`
+// 	Value interface{} `yaml:"value"`
+// }
 
 // Meta ...
 type Meta struct {
-	Image string `json:"image"`
+	Image            string                 `yaml:"image"`
+	CustomProperties map[string]interface{} `yaml:"customProperties"`
 }

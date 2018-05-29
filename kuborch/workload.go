@@ -26,7 +26,7 @@ func executeWorkload(w http.ResponseWriter, req *http.Request) {
 	helpers.PanicOnErrorAPI(helpers.ParseRequest(req, &workloadDetails), w)
 	// Fetch yaml from predefined_steps table
 	rdbSession, err := r.Connect(r.ConnectOpts{
-		Address:  "localhost:28015",
+		Address:  "dockinsrethink.myntra.com:28015",
 		Database: "shuttleservices",
 	})
 	helpers.PanicOnErrorAPI(err, w)
@@ -47,6 +47,7 @@ func executeWorkload(w http.ResponseWriter, req *http.Request) {
 	workloadPath := "./yaml/" + workloadName + ".yaml"
 	fileContentInBytes, err := replaceVariables(yamlFromRethink, workloadDetails, workloadPath)
 	helpers.PanicOnErrorAPI(err, w)
+	log.Printf("here - %s", string(fileContentInBytes))
 	err = ioutil.WriteFile(workloadPath, fileContentInBytes, 0777)
 	helpers.PanicOnErrorAPI(err, w)
 	go runKubeCTL(workloadName, workloadPath, workloadDetails.WorkloadID)
