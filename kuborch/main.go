@@ -15,10 +15,12 @@ import (
 // Clientset ...
 var Clientset *kubernetes.Clientset
 
+var ConfigPath *string
+
 func main() {
-	configPath := flag.String("configPath", "~/.kube/config", "Path to kube config")
+	ConfigPath = flag.String("configPath", "~/.kube/config", "Path to kube config")
 	flag.Parse()
-	cfg, err := clientcmd.BuildConfigFromFlags("", *configPath)
+	cfg, err := clientcmd.BuildConfigFromFlags("", *ConfigPath)
 	helpers.FailOnErr(err)
 	Clientset, err = kubernetes.NewForConfig(cfg)
 	helpers.FailOnErr(err)

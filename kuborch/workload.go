@@ -74,7 +74,7 @@ func replaceVariables(yfr types.YAMLFromRethink, wd types.WorkloadDetails, workl
 }
 
 func runKubeCTL(workloadName, workloadPath, workloadID string) {
-	cmd := exec.Command("kubectl", "create", "-f", workloadPath)
+	cmd := exec.Command("kubectl", "--kubeconfig", *ConfigPath, "create", "-f", workloadPath)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	err := cmd.Run()
