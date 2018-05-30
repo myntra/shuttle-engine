@@ -1,10 +1,12 @@
-hash: 0f351a11d59617c220ddcf9b2b2a13fb6fdbc4ed17de58616fbfd394dc3aff62
-updated: 2018-05-29T03:20:05.702218427+05:30
+hash: b7d16483962713f53e5b3dabb1c808f57eacb769bf604592d25f58e4d5fd28f8
+updated: 2018-05-31T01:52:48.455194288+05:30
 imports:
 - name: github.com/cenkalti/backoff
   version: f756bc9a37f808627c8c1b26d2d6ea40c468440b
 - name: github.com/ghodss/yaml
   version: 0ca9ea5df5451ffdf184b4428c902747c2c11cd7
+- name: github.com/go-errors/errors
+  version: a6af135bd4e28680facf08a3d206b454abc877a4
 - name: github.com/gogo/protobuf
   version: c0656edd0d9eab7c66d1eb0c568f9039345796f7
   subpackages:

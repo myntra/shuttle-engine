@@ -16,12 +16,6 @@ type Step struct {
 	Status          string `yaml:"status"`
 }
 
-// // CustomProperty ...
-// type CustomProperty struct {
-// 	Key   string      `yaml:"key"`
-// 	Value interface{} `yaml:"value"`
-// }
-
 // Meta ...
 type Meta struct {
 	Image            string                 `yaml:"image"`

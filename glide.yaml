@@ -20,3 +20,5 @@ import:
   - tools/clientcmd
 - package: github.com/ghodss/yaml
   version: v1.0.0
+- package: github.com/go-errors/errors
+  version: v1.0.1

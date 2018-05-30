@@ -20,7 +20,7 @@ import (
 func executeHandler(w http.ResponseWriter, r *http.Request) {
 	var workloadDetails types.WorkloadDetails
 	err := helpers.ParseRequest(r, &workloadDetails)
-	helpers.FailOnErr(err)
+	helpers.PanicOnErrorAPI(err, w)
 	go InsertSteps(workloadDetails)
 	eRes := types.ExecuteResponse{
 		State:           "Workload triggered",
@@ -34,7 +34,6 @@ func executeHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func procureContent(workloadDetails types.WorkloadDetails) []types.Step {
-	workloadDetails.ImageList = map[int]string{}
 	rdbSession, err := r.Connect(r.ConnectOpts{
 		Address:  "dockinsrethink.myntra.com:28015",
 		Database: "shuttleservices",
@@ -72,15 +71,30 @@ func replaceVariables(yfr *types.YAMLFromRethink, wd types.WorkloadDetails) erro
 // InsertSteps ...
 func InsertSteps(workloadDetails types.WorkloadDetails) {
 	stageSteps := procureContent(workloadDetails)
+	imageList := make(map[int]string)
 	completedSteps := map[int]bool{}
 	interval := 5
 	tick := time.Tick(time.Duration(interval) * time.Second)
 	timeout := time.Tick(20 * time.Minute)
 	isEnd := false
 	second := 0
+	hasWorkloadFailed := false
 	for (len(completedSteps) != len(stageSteps)) && !isEnd {
 		select {
 		case <-tick:
+			if hasWorkloadFailed {
+				log.Printf("Workload has failed. Exiting")
+				// Shutdown all channels
+				for id, singleDeleteChannel := range MapOfDeleteChannels {
+					singleDeleteChannel <- types.WorkloadResult{
+						ID:     id,
+						Result: "Failed",
+					}
+					defer close(singleDeleteChannel)
+					defer delete(MapOfDeleteChannels, id)
+				}
+				isEnd = true
+			}
 			second += interval
 			log.Printf("\n\n%dth Second", second)
 			log.Println(completedSteps)
@@ -103,6 +117,7 @@ func InsertSteps(workloadDetails types.WorkloadDetails) {
 						}
 						if !foundAnIncompleteRequiredStep {
 							workloadDetails.WorkloadID = workloadDetails.ID + "-" + strconv.Itoa(index)
+							workloadDetails.StepID = index
 							workloadDetails.Task = singleStep.Task
 							workloadDetails.RegistryURL = "buildhub.myntra.com:5000"
 							customPropertiesInBytes, err := json.Marshal(singleStep.Meta.CustomProperties)
@@ -110,7 +125,7 @@ func InsertSteps(workloadDetails types.WorkloadDetails) {
 							workloadDetails.CustomProperties = string(customPropertiesInBytes)
 							if singleStep.Meta.Image != "" {
 								if imageIndex, err := strconv.Atoi(singleStep.Meta.Image); err == nil {
-									workloadDetails.Image = workloadDetails.ImageList[imageIndex]
+									workloadDetails.Image = imageList[imageIndex]
 									if workloadDetails.Image == "" {
 										helpers.FailOnErr(fmt.Errorf("Trying to use an image which was not committed %s",
 											singleStep.Task))
@@ -119,7 +134,7 @@ func InsertSteps(workloadDetails types.WorkloadDetails) {
 									workloadDetails.Image = singleStep.Meta.Image
 								}
 							} else {
-								helpers.FailOnErr(fmt.Errorf("Image not specified for step %s", singleStep.Task))
+								log.Printf("Image not specified for step %s", singleStep.Task)
 							}
 							workloadDetails.CommitContainer = singleStep.CommitContainer
 							// Trigger the API call to kuborch
@@ -136,14 +151,16 @@ func InsertSteps(workloadDetails types.WorkloadDetails) {
 										log.Printf("%s - Got a channel req - %v", stageSteps[index].Task, statusInChannel)
 										if statusInChannel.Result == "Succeeded" {
 											completedSteps[stageSteps[index].ID] = true
+										} else {
+											hasWorkloadFailed = true
 										}
 										stageSteps[index].Status = statusInChannel.Result
 										log.Printf("%s - Sleeping Done", stageSteps[index].Task)
 										if workloadDetails.CommitContainer {
 											// partner-terms-service-59-bf6532270193:clone
-											workloadDetails.ImageList[index] = workloadDetails.Repo + "-" +
+											imageList[index] = workloadDetails.Repo + "-" +
 												strconv.Itoa(workloadDetails.PRID) + "-" +
-												workloadDetails.SrcTopCommmit + ":" +
+												workloadDetails.SrcTopCommit + ":" +
 												workloadDetails.Task
 										}
 										return

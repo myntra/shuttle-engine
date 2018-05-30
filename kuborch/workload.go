@@ -39,11 +39,12 @@ func executeWorkload(w http.ResponseWriter, req *http.Request) {
 	var yamlFromRethink types.YAMLFromRethink
 	err = cursor.One(&yamlFromRethink)
 	helpers.PanicOnErrorAPI(err, w)
-	// Workload name of the format - {{.Repo}}-{{.PRID}}-{{.SrcTopCommmit}}-{{.Task}}
+	// Workload name of the format - {{.Repo}}-{{.PRID}}-{{.SrcTopCommit}}-{{.Task}}
 	workloadName := workloadDetails.Repo +
 		"-" + strconv.Itoa(workloadDetails.PRID) +
-		"-" + workloadDetails.SrcTopCommmit +
-		"-" + workloadDetails.Task
+		"-" + workloadDetails.SrcTopCommit +
+		"-" + workloadDetails.Task +
+		"-" + strconv.Itoa(workloadDetails.StepID)
 	workloadPath := "./yaml/" + workloadName + ".yaml"
 	fileContentInBytes, err := replaceVariables(yamlFromRethink, workloadDetails, workloadPath)
 	helpers.PanicOnErrorAPI(err, w)
@@ -64,7 +65,8 @@ func executeWorkload(w http.ResponseWriter, req *http.Request) {
 func replaceVariables(yfr types.YAMLFromRethink, wd types.WorkloadDetails, workloadPath string) ([]byte, error) {
 	// Some replaces happen here
 	configBuf := new(bytes.Buffer)
-	// log.Println(yfr.Config)
+	log.Println(yfr.Config)
+	log.Printf("%+v", wd)
 	tmpl := template.Must(template.New(workloadPath).Parse(yfr.Config))
 	err := tmpl.Execute(configBuf, wd)
 	if err != nil {

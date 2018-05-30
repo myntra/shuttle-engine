@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+
+	"github.com/go-errors/errors"
 )
 
 // Response ...
@@ -15,14 +17,14 @@ type Response struct {
 // FailOnErr Fail if error is not nil
 func FailOnErr(err error) {
 	if err != nil {
-		log.Fatal(err)
+		log.Println(errors.Wrap(err, 3).ErrorStack())
 	}
 }
 
 // PanicOnErrorAPI ...
 func PanicOnErrorAPI(err error, w http.ResponseWriter) {
 	if err != nil {
-		log.Println(err.Error())
+		log.Panic(err)
 		eRes := Response{
 			State: "Error : " + err.Error(),
 			Code:  500,
