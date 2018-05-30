@@ -12,7 +12,7 @@ import (
 func callbackHandler(w http.ResponseWriter, r *http.Request) {
 	workloadResult := types.WorkloadResult{}
 	err := helpers.ParseRequest(r, &workloadResult)
-	helpers.FailOnErr(err)
+	helpers.PanicOnErrorAPI(err, w)
 	log.Println(workloadResult)
 	if stepChannel, isPresent := MapOfDeleteChannels[workloadResult.ID]; isPresent {
 		stepChannel <- workloadResult
@@ -27,7 +27,7 @@ func callbackHandler(w http.ResponseWriter, r *http.Request) {
 		Code:  200,
 	}
 	crInBytes, err := json.Marshal(&cr)
-	helpers.FailOnErr(err)
+	helpers.PanicOnErrorAPI(err, w)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(200)
 	w.Write(crInBytes)

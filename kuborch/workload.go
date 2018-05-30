@@ -76,11 +76,25 @@ func replaceVariables(yfr types.YAMLFromRethink, wd types.WorkloadDetails, workl
 }
 
 func runKubeCTL(workloadName, workloadPath, workloadID string) {
+	resChan := make(chan string)
+	go func(workloadID string) {
+		for {
+			select {
+			case res := <-resChan:
+				callback(types.WorkloadResult{
+					ID:     workloadID,
+					Result: res,
+				})
+				return
+			}
+		}
+	}(workloadID)
+	defer close(resChan)
 	cmd := exec.Command("kubectl", "--kubeconfig", *ConfigPath, "create", "-f", workloadPath)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	err := cmd.Run()
-	helpers.FailOnErr(err)
+	helpers.FailOnErr(err, resChan)
 	log.Println("yaml executed")
 	// Poll Kube API for result of workload
 	log.Println("job-name=" + workloadName)
@@ -89,7 +103,7 @@ func runKubeCTL(workloadName, workloadPath, workloadID string) {
 	}
 	log.Println("listopts done")
 	watcherI, err := Clientset.BatchV1().Jobs("default").Watch(listOpts)
-	helpers.FailOnErr(err)
+	helpers.FailOnErr(err, resChan)
 	log.Println("Created watcherI")
 	ch := watcherI.ResultChan()
 	defer watcherI.Stop()
@@ -107,23 +121,24 @@ func runKubeCTL(workloadName, workloadPath, workloadID string) {
 			case watch.Modified:
 				log.Println("New modification poll")
 				if job.Status.Active == 0 {
-					workloadResult := types.WorkloadResult{
-						ID:     workloadID,
-						Result: "Failed",
-					}
+					res := "Failed"
 					if job.Status.Succeeded == 1 {
 						log.Println("Setting Succeeded")
-						workloadResult.Result = "Succeeded"
+						res = "Succeeded"
 					}
 					log.Println("Hitting API")
-					_, err := helpers.Post("http://localhost:5500/callback", workloadResult, nil)
-					if err != nil {
-						log.Println(err)
-					}
+					resChan <- res
 					log.Println("Stopping Poll")
 					return
 				}
 			}
 		}
+	}
+}
+
+func callback(workloadResult types.WorkloadResult) {
+	_, err := helpers.Post("http://localhost:5500/callback", workloadResult, nil)
+	if err != nil {
+		log.Println(err)
 	}
 }

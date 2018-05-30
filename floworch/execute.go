@@ -27,7 +27,8 @@ func executeHandler(w http.ResponseWriter, r *http.Request) {
 		WorkloadDetails: workloadDetails,
 		Code:            200,
 	}
-	inBytes, _ := json.Marshal(eRes)
+	inBytes, err := json.Marshal(eRes)
+	helpers.PanicOnErrorAPI(err, w)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(200)
 	w.Write(inBytes)
@@ -38,25 +39,25 @@ func procureContent(workloadDetails types.WorkloadDetails) []types.Step {
 		Address:  "dockinsrethink.myntra.com:28015",
 		Database: "shuttleservices",
 	})
-	helpers.FailOnErr(err)
+	helpers.FailOnErr(err, nil)
 	cursor, err := r.Table(workloadDetails.Stage + "_configs").Filter(map[string]interface{}{
 		"id": workloadDetails.Repo + "-" + workloadDetails.DstBranch,
 	}).Run(rdbSession)
-	helpers.FailOnErr(err)
+	helpers.FailOnErr(err, nil)
 	defer cursor.Close()
 	var yamlFromRethink types.YAMLFromRethink
 	err = cursor.One(&yamlFromRethink)
-	helpers.FailOnErr(err)
+	helpers.FailOnErr(err, nil)
 	// Replacing variables
 	err = replaceVariables(&yamlFromRethink, workloadDetails)
-	helpers.FailOnErr(err)
+	helpers.FailOnErr(err, nil)
 	// Extracting yaml into json
 	reg := regexp.MustCompile("- id:")
 	matches := reg.FindAllStringIndex(yamlFromRethink.Config, -1)
 	log.Println(yamlFromRethink.Config)
 	stageSteps := make([]types.Step, len(matches))
 	err = yaml.Unmarshal([]byte(yamlFromRethink.Config), &stageSteps)
-	helpers.FailOnErr(err)
+	helpers.FailOnErr(err, nil)
 	return stageSteps
 }
 
@@ -121,14 +122,14 @@ func InsertSteps(workloadDetails types.WorkloadDetails) {
 							workloadDetails.Task = singleStep.Task
 							workloadDetails.RegistryURL = "buildhub.myntra.com:5000"
 							customPropertiesInBytes, err := json.Marshal(singleStep.Meta.CustomProperties)
-							helpers.FailOnErr(err)
+							helpers.FailOnErr(err, nil)
 							workloadDetails.CustomProperties = string(customPropertiesInBytes)
 							if singleStep.Meta.Image != "" {
 								if imageIndex, err := strconv.Atoi(singleStep.Meta.Image); err == nil {
 									workloadDetails.Image = imageList[imageIndex]
 									if workloadDetails.Image == "" {
 										helpers.FailOnErr(fmt.Errorf("Trying to use an image which was not committed %s",
-											singleStep.Task))
+											singleStep.Task), nil)
 									}
 								} else {
 									workloadDetails.Image = singleStep.Meta.Image
@@ -139,7 +140,7 @@ func InsertSteps(workloadDetails types.WorkloadDetails) {
 							workloadDetails.CommitContainer = singleStep.CommitContainer
 							// Trigger the API call to kuborch
 							_, err = helpers.Post("http://localhost:5600/executeworkload", workloadDetails, nil)
-							helpers.FailOnErr(err)
+							helpers.FailOnErr(err, nil)
 							go func(index int, workloadDetails types.WorkloadDetails) {
 								MapOfDeleteChannels[workloadDetails.WorkloadID] = make(chan types.WorkloadResult)
 								// Hit kuborch API to create job

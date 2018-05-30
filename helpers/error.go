@@ -15,7 +15,10 @@ type Response struct {
 }
 
 // FailOnErr Fail if error is not nil
-func FailOnErr(err error) {
+func FailOnErr(err error, resChan chan string) {
+	if resChan != nil {
+		resChan <- err.Error()
+	}
 	if err != nil {
 		log.Println(errors.Wrap(err, 3).ErrorStack())
 	}

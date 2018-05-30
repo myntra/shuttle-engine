@@ -21,9 +21,9 @@ func main() {
 	ConfigPath = flag.String("configPath", "~/.kube/config", "Path to kube config")
 	flag.Parse()
 	cfg, err := clientcmd.BuildConfigFromFlags("", *ConfigPath)
-	helpers.FailOnErr(err)
+	helpers.FailOnErr(err, nil)
 	Clientset, err = kubernetes.NewForConfig(cfg)
-	helpers.FailOnErr(err)
+	helpers.FailOnErr(err, nil)
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	port := 5600
 	log.Printf("Starting up the server at %d", port)
