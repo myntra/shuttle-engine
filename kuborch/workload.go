@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"html/template"
 	"io/ioutil"
 	"log"
@@ -137,17 +136,17 @@ func runKubeCTL(workloadName, workloadPath, workloadID string) {
 				log.Println("New modification poll")
 				if job.Status.Active == 0 {
 					res := "Failed"
-					err = fmt.Errorf("Job Failed on K8s")
+					errMsg := "Job Failed on K8s"
 					if job.Status.Succeeded == 1 {
 						log.Println("Setting Succeeded")
 						res = "Succeeded"
-						err = nil
+						errMsg = ""
 					}
 					log.Println("Hitting API")
 					resChan <- types.WorkloadResult{
 						ID:      workloadID,
 						Result:  res,
-						Details: err.Error(),
+						Details: errMsg,
 					}
 					log.Println("Stopping Poll")
 					return
