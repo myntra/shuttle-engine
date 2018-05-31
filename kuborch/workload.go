@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"strconv"
+	"time"
 
 	"github.com/myntra/shuttle-engine/helpers"
 	"github.com/myntra/shuttle-engine/types"
@@ -109,6 +110,7 @@ func runKubeCTL(workloadName, workloadPath, workloadID string) {
 		LabelSelector: "job-name=" + workloadName,
 	}
 	log.Println("listopts done")
+	time.Sleep(time.Duration(5 * time.Second))
 	watcherI, err := Clientset.BatchV1().Jobs("default").Watch(listOpts)
 	if err != nil {
 		resChan <- types.WorkloadResult{
