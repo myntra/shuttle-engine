@@ -15,6 +15,7 @@ import (
 // Clientset ...
 var Clientset *kubernetes.Clientset
 
+// ConfigPath ...
 var ConfigPath *string
 
 func main() {

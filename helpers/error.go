@@ -15,19 +15,20 @@ type Response struct {
 }
 
 // FailOnErr Fail if error is not nil
-func FailOnErr(err error, resChan chan string) {
+func FailOnErr(err error, resChan *chan string) {
 	if resChan != nil {
-		resChan <- err.Error()
+		*resChan <- err.Error()
 	}
 	if err != nil {
 		log.Println(errors.Wrap(err, 3).ErrorStack())
+		// runtime.Caller(1)
 	}
 }
 
 // PanicOnErrorAPI ...
 func PanicOnErrorAPI(err error, w http.ResponseWriter) {
 	if err != nil {
-		log.Panic(err)
+		log.Println(errors.Wrap(err, 3).ErrorStack())
 		eRes := Response{
 			State: "Error : " + err.Error(),
 			Code:  500,

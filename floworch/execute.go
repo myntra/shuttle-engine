@@ -100,10 +100,10 @@ func InsertSteps(workloadDetails types.WorkloadDetails) {
 			log.Printf("\n\n%dth Second", second)
 			log.Println(completedSteps)
 			for index, singleStep := range stageSteps {
-				log.Printf("%s - Checking Step", singleStep.Task)
+				log.Printf("%s - Checking Step. State = %s", singleStep.Task, singleStep.Status)
 				// Check if each step if not executed, can be executed
-				if (singleStep.Status != "Succeeded") && (singleStep.Status != "Triggered") {
-					log.Printf("%s - Step is not in Succeeded or Triggered State", singleStep.Task)
+				if (singleStep.Status != "Succeeded") && (singleStep.Status != "Triggered") && (singleStep.Status != "Failed") {
+					log.Printf("%s - Step is not in Succeeded or Triggered or Failed State", singleStep.Task)
 					// Check if the step is eligible for execution
 					foundAnIncompleteRequiredStep := false
 					log.Printf("%s - Checking if Step requirements are satisfied", singleStep.Task)
@@ -154,6 +154,7 @@ func InsertSteps(workloadDetails types.WorkloadDetails) {
 											completedSteps[stageSteps[index].ID] = true
 										} else {
 											hasWorkloadFailed = true
+											log.Printf("%s - Workload has failed. Stopping in 5 seconds", stageSteps[index].Task)
 										}
 										stageSteps[index].Status = statusInChannel.Result
 										log.Printf("%s - Sleeping Done", stageSteps[index].Task)

@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"html/template"
 	"io/ioutil"
 	"log"
@@ -76,15 +77,15 @@ func replaceVariables(yfr types.YAMLFromRethink, wd types.WorkloadDetails, workl
 }
 
 func runKubeCTL(workloadName, workloadPath, workloadID string) {
-	resChan := make(chan string)
+	resChan := make(chan types.WorkloadResult)
 	go func(workloadID string) {
 		for {
 			select {
-			case res := <-resChan:
-				callback(types.WorkloadResult{
-					ID:     workloadID,
-					Result: res,
-				})
+			case wr := <-resChan:
+				_, err := helpers.Post("http://localhost:5500/callback", wr, nil)
+				if err != nil {
+					log.Println(err)
+				}
 				return
 			}
 		}
@@ -94,7 +95,14 @@ func runKubeCTL(workloadName, workloadPath, workloadID string) {
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	err := cmd.Run()
-	helpers.FailOnErr(err, resChan)
+	if err != nil {
+		resChan <- types.WorkloadResult{
+			ID:      workloadID,
+			Result:  "Failed",
+			Details: err.Error(),
+		}
+		return
+	}
 	log.Println("yaml executed")
 	// Poll Kube API for result of workload
 	log.Println("job-name=" + workloadName)
@@ -103,7 +111,14 @@ func runKubeCTL(workloadName, workloadPath, workloadID string) {
 	}
 	log.Println("listopts done")
 	watcherI, err := Clientset.BatchV1().Jobs("default").Watch(listOpts)
-	helpers.FailOnErr(err, resChan)
+	if err != nil {
+		resChan <- types.WorkloadResult{
+			ID:      workloadID,
+			Result:  "Failed",
+			Details: err.Error(),
+		}
+		return
+	}
 	log.Println("Created watcherI")
 	ch := watcherI.ResultChan()
 	defer watcherI.Stop()
@@ -122,23 +137,22 @@ func runKubeCTL(workloadName, workloadPath, workloadID string) {
 				log.Println("New modification poll")
 				if job.Status.Active == 0 {
 					res := "Failed"
+					err = fmt.Errorf("Job Failed on K8s")
 					if job.Status.Succeeded == 1 {
 						log.Println("Setting Succeeded")
 						res = "Succeeded"
+						err = nil
 					}
 					log.Println("Hitting API")
-					resChan <- res
+					resChan <- types.WorkloadResult{
+						ID:      workloadID,
+						Result:  res,
+						Details: err.Error(),
+					}
 					log.Println("Stopping Poll")
 					return
 				}
 			}
 		}
-	}
-}
-
-func callback(workloadResult types.WorkloadResult) {
-	_, err := helpers.Post("http://localhost:5500/callback", workloadResult, nil)
-	if err != nil {
-		log.Println(err)
 	}
 }

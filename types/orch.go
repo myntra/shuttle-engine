@@ -22,6 +22,7 @@ type WorkloadDetails struct {
 
 // WorkloadResult ...
 type WorkloadResult struct {
-	ID     string `json:"id"`
-	Result string `json:"result"`
+	ID      string `json:"id"`
+	Result  string `json:"result"`
+	Details string `json:"details"`
 }
