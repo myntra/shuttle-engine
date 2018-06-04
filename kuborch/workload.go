@@ -28,7 +28,7 @@ func executeWorkload(w http.ResponseWriter, req *http.Request) {
 	helpers.PanicOnErrorAPI(helpers.ParseRequest(req, &step), w)
 	// Fetch yaml from predefined_steps table
 	rdbSession, err := r.Connect(r.ConnectOpts{
-		Address:  "localhost:28015",
+		Address:  "dockinsrethink.myntra.com:28015",
 		Database: "shuttleservices",
 	})
 	helpers.PanicOnErrorAPI(err, w)
