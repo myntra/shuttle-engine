@@ -143,7 +143,12 @@ func runKubeCTL(uniqueKey, workloadPath, uniqueID string) {
 			job, isPresent := event.Object.(*batchv1.Job)
 			if !isPresent {
 				log.Println("Unknown Object Type")
-				continue
+				resChan <- types.WorkloadResult{
+					ID:      uniqueID,
+					Result:  "Failed",
+					Details: "Unknown Object Type",
+				}
+				return
 			}
 			log.Printf("Job: %s -> Active: %d, Succeeded: %d, Failed: %d",
 				job.Name, job.Status.Active, job.Status.Succeeded, job.Status.Failed)
