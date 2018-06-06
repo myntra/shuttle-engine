@@ -13,7 +13,6 @@ import (
 var MapOfDeleteChannels = make(map[string]chan types.WorkloadResult)
 
 func main() {
-	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	router := mux.NewRouter()
 	router.HandleFunc("/execute", executeHandler).Methods("Post")
 	router.HandleFunc("/callback", callbackHandler).Methods("Post")

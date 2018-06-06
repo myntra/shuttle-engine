@@ -1,7 +1,6 @@
 package helpers
 
 import (
-	"encoding/json"
 	"log"
 	"net/http"
 
@@ -20,22 +19,19 @@ func FailOnErr(err error, resChan *chan string) {
 		*resChan <- err.Error()
 	}
 	if err != nil {
-		log.Println(errors.Wrap(err, 3).ErrorStack())
-		// runtime.Caller(1)
+		PrintErr(err)
 	}
+}
+
+// PrintErr ...
+func PrintErr(err error) {
+	log.Println(errors.Wrap(err, 3).ErrorStack())
 }
 
 // PanicOnErrorAPI ...
 func PanicOnErrorAPI(err error, w http.ResponseWriter) {
 	if err != nil {
 		log.Println(errors.Wrap(err, 3).ErrorStack())
-		eRes := Response{
-			State: "Error : " + err.Error(),
-			Code:  500,
-		}
-		inBytes, _ := json.Marshal(eRes)
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(500)
-		w.Write(inBytes)
+		SendResponse("Error : "+err.Error(), 500, w)
 	}
 }

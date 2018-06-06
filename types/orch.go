@@ -26,3 +26,11 @@ type WorkloadResult struct {
 	Result  string `json:"result"`
 	Details string `json:"details"`
 }
+
+// FlowOrchRequest ...
+type FlowOrchRequest struct {
+	Stage       string            `json:"stage"`
+	StageFilter string            `json:"stageFilter"`
+	Meta        map[string]string `json:"meta"`
+	ID          string            `json:"id"`
+}

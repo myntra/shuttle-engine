@@ -1,15 +1,14 @@
 package main
 
 import (
-	"bytes"
 	"encoding/json"
-	"html/template"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
 	"os/exec"
-	"strconv"
+	"strings"
 	"time"
 
 	"github.com/myntra/shuttle-engine/helpers"
@@ -23,36 +22,29 @@ import (
 )
 
 func executeWorkload(w http.ResponseWriter, req *http.Request) {
-	workloadDetails := types.WorkloadDetails{}
-	helpers.PanicOnErrorAPI(helpers.ParseRequest(req, &workloadDetails), w)
+	step := types.Step{}
+	helpers.PanicOnErrorAPI(helpers.ParseRequest(req, &step), w)
 	// Fetch yaml from predefined_steps table
 	rdbSession, err := r.Connect(r.ConnectOpts{
 		Address:  "dockinsrethink.myntra.com:28015",
 		Database: "shuttleservices",
 	})
 	helpers.PanicOnErrorAPI(err, w)
-	// log.Println(workloadDetails)
 	cursor, err := r.Table("predefined_steps").Filter(map[string]interface{}{
-		"name": workloadDetails.Task,
+		"name": step.StepTemplate,
 	}).Run(rdbSession)
 	helpers.PanicOnErrorAPI(err, w)
 	defer cursor.Close()
-	var yamlFromRethink types.YAMLFromRethink
-	err = cursor.One(&yamlFromRethink)
+	var yamlFromDB types.YAMLFromDB
+	err = cursor.One(&yamlFromDB)
 	helpers.PanicOnErrorAPI(err, w)
-	// Workload name of the format - {{.Repo}}-{{.PRID}}-{{.SrcTopCommit}}-{{.Task}}
-	workloadName := workloadDetails.Repo +
-		"-" + strconv.Itoa(workloadDetails.PRID) +
-		"-" + workloadDetails.SrcTopCommit +
-		"-" + workloadDetails.Task +
-		"-" + strconv.Itoa(workloadDetails.StepID)
-	workloadPath := "./yaml/" + workloadName + ".yaml"
-	fileContentInBytes, err := replaceVariables(yamlFromRethink, workloadDetails, workloadPath)
+
+	workloadPath := "./yaml/" + step.UniqueKey + ".yaml"
+	fileContentInBytes := replaceVariables(yamlFromDB, step, workloadPath)
 	helpers.PanicOnErrorAPI(err, w)
-	log.Printf("here - %s", string(fileContentInBytes))
 	err = ioutil.WriteFile(workloadPath, fileContentInBytes, 0777)
 	helpers.PanicOnErrorAPI(err, w)
-	go runKubeCTL(workloadName, workloadPath, workloadDetails.WorkloadID)
+	go runKubeCTL(step.UniqueKey, workloadPath, step.UniqueKey)
 	eRes := helpers.Response{
 		State: "Workload triggered",
 		Code:  200,
@@ -63,22 +55,23 @@ func executeWorkload(w http.ResponseWriter, req *http.Request) {
 	w.Write(inBytes)
 }
 
-func replaceVariables(yfr types.YAMLFromRethink, wd types.WorkloadDetails, workloadPath string) ([]byte, error) {
-	// Some replaces happen here
-	configBuf := new(bytes.Buffer)
-	log.Println(yfr.Config)
-	log.Printf("%+v", wd)
-	tmpl := template.Must(template.New(workloadPath).Parse(yfr.Config))
-	err := tmpl.Execute(configBuf, wd)
-	if err != nil {
-		return nil, err
+func replaceVariables(yamlFromDB types.YAMLFromDB, step types.Step, workloadPath string) []byte {
+	// // Some replaces happen here
+	fmt.Println(step.Replacers)
+	for singleReplacer, value := range step.Replacers {
+		yamlFromDB.Config = strings.Replace(yamlFromDB.Config, "{{."+singleReplacer+"}}", value, -1)
 	}
-	return configBuf.Bytes(), nil
+	// Twice for overlapping substitution
+	for singleReplacer, value := range step.Replacers {
+		yamlFromDB.Config = strings.Replace(yamlFromDB.Config, "{{."+singleReplacer+"}}", value, -1)
+	}
+	fmt.Println(yamlFromDB.Config)
+	return []byte(yamlFromDB.Config)
 }
 
-func runKubeCTL(workloadName, workloadPath, workloadID string) {
+func runKubeCTL(uniqueKey, workloadPath, uniqueID string) {
 	resChan := make(chan types.WorkloadResult)
-	go func(workloadID string) {
+	go func(uniqueID string) {
 		for {
 			select {
 			case wr := <-resChan:
@@ -89,7 +82,7 @@ func runKubeCTL(workloadName, workloadPath, workloadID string) {
 				return
 			}
 		}
-	}(workloadID)
+	}(uniqueID)
 	defer close(resChan)
 	cmd := exec.Command("kubectl", "--kubeconfig", *ConfigPath, "create", "-f", workloadPath)
 	cmd.Stdout = os.Stdout
@@ -97,7 +90,7 @@ func runKubeCTL(workloadName, workloadPath, workloadID string) {
 	err := cmd.Run()
 	if err != nil {
 		resChan <- types.WorkloadResult{
-			ID:      workloadID,
+			ID:      uniqueID,
 			Result:  "Failed",
 			Details: err.Error(),
 		}
@@ -105,16 +98,16 @@ func runKubeCTL(workloadName, workloadPath, workloadID string) {
 	}
 	log.Println("yaml executed")
 	// Poll Kube API for result of workload
-	log.Println("job-name=" + workloadName)
+	log.Println("job-name=" + uniqueKey)
 	listOpts := metav1.ListOptions{
-		LabelSelector: "job-name=" + workloadName,
+		LabelSelector: "job-name=" + uniqueKey,
 	}
 	log.Println("listopts done")
 	time.Sleep(time.Duration(2 * time.Second))
 	watcherI, err := Clientset.BatchV1().Jobs("default").Watch(listOpts)
 	if err != nil {
 		resChan <- types.WorkloadResult{
-			ID:      workloadID,
+			ID:      uniqueID,
 			Result:  "Failed",
 			Details: err.Error(),
 		}
@@ -129,28 +122,40 @@ func runKubeCTL(workloadName, workloadPath, workloadID string) {
 			job, isPresent := event.Object.(*batchv1.Job)
 			if !isPresent {
 				log.Println("Unknown Object Type")
-				continue
+				resChan <- types.WorkloadResult{
+					ID:      uniqueID,
+					Result:  "Failed",
+					Details: "Unknown Object Type",
+				}
+				return
 			}
 			log.Printf("Job: %s -> Active: %d, Succeeded: %d, Failed: %d",
 				job.Name, job.Status.Active, job.Status.Succeeded, job.Status.Failed)
 			switch event.Type {
 			case watch.Modified:
+				sendResponse := false
 				log.Println("New modification poll")
+				res := "Failed"
+				errMsg := "Job Failed on K8s"
+				if job.Status.Failed > 0 {
+					log.Println("Workload Failed")
+					sendResponse = true
+				}
 				if job.Status.Active == 0 {
-					res := "Failed"
-					errMsg := "Job Failed on K8s"
 					if job.Status.Succeeded == 1 {
-						log.Println("Setting Succeeded")
 						res = "Succeeded"
 						errMsg = ""
 					}
-					log.Println("Hitting API")
+					log.Println("Workload Succeeded")
+					sendResponse = true
+				}
+				if sendResponse {
+					log.Println("Stopping Poll")
 					resChan <- types.WorkloadResult{
-						ID:      workloadID,
+						ID:      uniqueID,
 						Result:  res,
 						Details: errMsg,
 					}
-					log.Println("Stopping Poll")
 					return
 				}
 			}
