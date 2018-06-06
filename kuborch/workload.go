@@ -22,9 +22,7 @@ import (
 )
 
 func executeWorkload(w http.ResponseWriter, req *http.Request) {
-	// workloadDetails := types.WorkloadDetails{}
 	step := types.Step{}
-	// helpers.PanicOnErrorAPI(helpers.ParseRequest(req, &workloadDetails), w)
 	helpers.PanicOnErrorAPI(helpers.ParseRequest(req, &step), w)
 	// Fetch yaml from predefined_steps table
 	rdbSession, err := r.Connect(r.ConnectOpts{
@@ -32,9 +30,7 @@ func executeWorkload(w http.ResponseWriter, req *http.Request) {
 		Database: "shuttleservices",
 	})
 	helpers.PanicOnErrorAPI(err, w)
-	// log.Println(workloadDetails)
 	cursor, err := r.Table("predefined_steps").Filter(map[string]interface{}{
-		// "name": workloadDetails.Task,
 		"name": step.StepTemplate,
 	}).Run(rdbSession)
 	helpers.PanicOnErrorAPI(err, w)
@@ -42,18 +38,10 @@ func executeWorkload(w http.ResponseWriter, req *http.Request) {
 	var yamlFromDB types.YAMLFromDB
 	err = cursor.One(&yamlFromDB)
 	helpers.PanicOnErrorAPI(err, w)
-	// Workload name of the format - {{.Repo}}-{{.PRID}}-{{.SrcTopCommit}}-{{.Task}}
-	// workloadName := workloadDetails.Repo +
-	// 	"-" + strconv.Itoa(workloadDetails.PRID) +
-	// 	"-" + workloadDetails.SrcTopCommit +
-	// 	"-" + workloadDetails.Task +
-	// 	"-" + strconv.Itoa(workloadDetails.StepID)
 
-	// workloadName := step.UniqueKey
 	workloadPath := "./yaml/" + step.UniqueKey + ".yaml"
 	fileContentInBytes := replaceVariables(yamlFromDB, step, workloadPath)
 	helpers.PanicOnErrorAPI(err, w)
-	// log.Printf("here - %s", string(fileContentInBytes))
 	err = ioutil.WriteFile(workloadPath, fileContentInBytes, 0777)
 	helpers.PanicOnErrorAPI(err, w)
 	go runKubeCTL(step.UniqueKey, workloadPath, step.UniqueKey)
@@ -69,15 +57,6 @@ func executeWorkload(w http.ResponseWriter, req *http.Request) {
 
 func replaceVariables(yamlFromDB types.YAMLFromDB, step types.Step, workloadPath string) []byte {
 	// // Some replaces happen here
-	// configBuf := new(bytes.Buffer)
-	// log.Println(yfr.Config)
-	// log.Printf("%+v", step)
-	// tmpl := template.Must(template.New(workloadPath).Parse(yfr.Config))
-	// err := tmpl.Execute(configBuf, step)
-	// if err != nil {
-	// 	return nil, err
-	// }
-	// return configBuf.Bytes(), nil
 	fmt.Println(step.Replacers)
 	for singleReplacer, value := range step.Replacers {
 		yamlFromDB.Config = strings.Replace(yamlFromDB.Config, "{{."+singleReplacer+"}}", value, -1)

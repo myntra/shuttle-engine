@@ -17,12 +17,13 @@ func convertMetaTagsToReplacers(step *types.Step, flowOrchRequest types.FlowOrch
 		convertedValue := ""
 		switch step.Meta[parser].Value.(type) {
 		case string:
+			// Twelve Space Hack for multi-line strings
+			// TODO : Have to find a better way to do this
 			twelveSpaces := "            "
 			convertedValue = step.Meta[parser].Value.(string)
 			if strings.Contains(convertedValue, "\n") {
 				convertedValue = "|\n" + twelveSpaces + strings.Replace(convertedValue, "\n", "\n"+twelveSpaces, -1)
 			}
-			// convertedValue = strings.Replace(convertedValue, "'", "\'", -1)
 		case map[string]interface{}:
 			convertedValueInBytes, err := json.Marshal(step.Meta[parser].Value)
 			if err != nil {

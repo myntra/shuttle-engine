@@ -31,6 +31,8 @@ func orchestrate(stageSteps []types.Step, flowOrchRequest types.FlowOrchRequest)
 					}
 					defer close(singleDeleteChannel)
 					defer delete(MapOfDeleteChannels, id)
+					// TODO : Stop jobs if they are running
+					// TODO : Don't stop jobs which have ignoreFailure
 				}
 				isEnd = true
 			}
@@ -41,7 +43,6 @@ func orchestrate(stageSteps []types.Step, flowOrchRequest types.FlowOrchRequest)
 			for index := 0; index < len(stageSteps); index++ {
 				log.Printf("%s - Checking Step. State = %s", stageSteps[index].Name, stageSteps[index].Status)
 				// Check if each step if not executed, can be executed
-				// if (singleStep.Status != "Succeeded") && (singleStep.Status != "Triggered") && (singleStep.Status != "Failed") {
 				if stageSteps[index].Status == "" {
 					log.Printf("%s - Step is not in Succeeded or Triggered or Failed State", stageSteps[index].Name)
 					// Check if the step is eligible for execution
