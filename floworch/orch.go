@@ -21,30 +21,51 @@ func orchestrate(stageSteps []types.Step, flowOrchRequest types.FlowOrchRequest)
 	for (len(completedSteps) != len(stageSteps)) && !isEnd {
 		select {
 		case <-tick:
-			if hasWorkloadFailed {
-				log.Printf("Workload has failed. Exiting")
-				// Shutdown all channels
-				for id, singleDeleteChannel := range MapOfDeleteChannels {
-					singleDeleteChannel <- types.WorkloadResult{
-						ID:     id,
-						Result: "Failed",
-					}
-					defer close(singleDeleteChannel)
-					defer delete(MapOfDeleteChannels, id)
-					// TODO : Stop jobs if they are running
-					// TODO : Don't stop jobs which have ignoreFailure
-				}
-				isEnd = true
-			}
 			second += interval
 			log.Printf("\n\n%dth Second", second)
+			if hasWorkloadFailed {
+				// TODO Is this needed?
+				// hasWorkloadFailed = false
+				log.Printf("A Workload has failed. Exiting/Aborting all other steps which do not ignoreErrors")
+				// Shutdown all running channels for the uniqueKey
+				isEnd = true
+				for uniqueKey, singleDeleteChannelDetail := range MapOfDeleteChannelDetails {
+					// If the uniqueKey matches and we cannot ignore errors for the workload
+					if singleDeleteChannelDetail.ID == flowOrchRequest.ID {
+						if !singleDeleteChannelDetail.IgnoreErrors {
+							singleDeleteChannelDetail.DeleteChannel <- types.WorkloadResult{
+								UniqueKey: uniqueKey,
+								Result:    "Failed",
+							}
+							defer close(singleDeleteChannelDetail.DeleteChannel)
+							defer delete(MapOfDeleteChannelDetails, uniqueKey)
+							// TODO : Stop jobs if they are running
+						} else {
+							log.Printf("There are workloads which ignoreErrors. Running them")
+							isEnd = false
+						}
+					}
+				}
+				// Change the state of all non-ignoreError steps to Aborted
+				for index := 0; index < len(stageSteps); index++ {
+					if stageSteps[index].Status == "" {
+						if !stageSteps[index].IgnoreErrors {
+							stageSteps[index].Status = "Aborted"
+							completedSteps[stageSteps[index].ID] = true
+						} else {
+							log.Printf("There are workloads which ignoreErrors. Running them")
+							isEnd = false
+						}
+					}
+				}
+			}
 			log.Println(completedSteps)
 			log.Println(imageList)
 			for index := 0; index < len(stageSteps); index++ {
 				log.Printf("%s - Checking Step. State = %s", stageSteps[index].Name, stageSteps[index].Status)
 				// Check if each step if not executed, can be executed
 				if stageSteps[index].Status == "" {
-					log.Printf("%s - Step is not in Succeeded or Triggered or Failed State", stageSteps[index].Name)
+					log.Printf("%s - Step is not in Succeeded or Triggered or Failed or Aborted State", stageSteps[index].Name)
 					// Check if the step is eligible for execution
 					foundAnIncompleteRequiredStep := false
 					log.Printf("%s - Checking if Step requirements are satisfied", stageSteps[index].Name)
@@ -69,20 +90,25 @@ func orchestrate(stageSteps []types.Step, flowOrchRequest types.FlowOrchRequest)
 								return err
 							}
 							go func(index int) {
-								MapOfDeleteChannels[stageSteps[index].UniqueKey] = make(chan types.WorkloadResult)
+								deleteChannelDetails := types.DeleteChannelDetails{
+									ID:            flowOrchRequest.ID,
+									Stage:         flowOrchRequest.Stage,
+									DeleteChannel: make(chan types.WorkloadResult),
+									IgnoreErrors:  stageSteps[index].IgnoreErrors,
+								}
+								MapOfDeleteChannelDetails[stageSteps[index].UniqueKey] = deleteChannelDetails
 								log.Printf("thread - %s - Started Delete Channel", stageSteps[index].Name)
 								log.Println(stageSteps[index].UniqueKey)
-								log.Println(MapOfDeleteChannels)
+								log.Println(MapOfDeleteChannelDetails)
 								// Hit kuborch API to create job
 								everySecond := time.Tick(5 * time.Second)
 								for {
 									log.Printf("thread - %s - Workload not complete", stageSteps[index].Name)
 									select {
-									case statusInChannel := <-MapOfDeleteChannels[stageSteps[index].UniqueKey]:
+									case statusInChannel := <-MapOfDeleteChannelDetails[stageSteps[index].UniqueKey].DeleteChannel:
 										log.Printf("thread - %s - Got a channel req - %v", stageSteps[index].Name, statusInChannel)
-										if statusInChannel.Result == "Succeeded" {
-											completedSteps[stageSteps[index].ID] = true
-										} else {
+										completedSteps[stageSteps[index].ID] = true
+										if statusInChannel.Result != "Succeeded" {
 											hasWorkloadFailed = true
 											log.Printf("thread - %s - Workload has failed. Stopping in 5 seconds", stageSteps[index].Name)
 										}

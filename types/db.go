@@ -24,6 +24,7 @@ type Step struct {
 	Status          string            `yaml:"status"`
 	UniqueKey       string            `yaml:"uniqueKey"`
 	Replacers       map[string]string `yaml:"replacers"`
+	IgnoreErrors    bool              `yaml:"ignoreErrors"`
 }
 
 // Meta ...

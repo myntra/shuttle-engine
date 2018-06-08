@@ -22,9 +22,9 @@ type WorkloadDetails struct {
 
 // WorkloadResult ...
 type WorkloadResult struct {
-	ID      string `json:"id"`
-	Result  string `json:"result"`
-	Details string `json:"details"`
+	UniqueKey string `json:"uniqueKey"`
+	Result    string `json:"result"`
+	Details   string `json:"details"`
 }
 
 // FlowOrchRequest ...
@@ -33,4 +33,12 @@ type FlowOrchRequest struct {
 	StageFilter string            `json:"stageFilter"`
 	Meta        map[string]string `json:"meta"`
 	ID          string            `json:"id"`
+}
+
+// DeleteChannelDetails ...
+type DeleteChannelDetails struct {
+	ID            string              `json:"id"`
+	Stage         string              `json:"stage"`
+	DeleteChannel chan WorkloadResult `json:"deleteChannel"`
+	IgnoreErrors  bool                `json:"ignoreErrors"`
 }

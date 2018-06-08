@@ -9,8 +9,8 @@ import (
 	"github.com/myntra/shuttle-engine/types"
 )
 
-// MapOfDeleteChannels ...
-var MapOfDeleteChannels = make(map[string]chan types.WorkloadResult)
+// MapOfDeleteChannelDetails ...
+var MapOfDeleteChannelDetails = make(map[string]types.DeleteChannelDetails)
 
 func main() {
 	router := mux.NewRouter()

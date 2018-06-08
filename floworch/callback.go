@@ -14,10 +14,10 @@ func callbackHandler(w http.ResponseWriter, r *http.Request) {
 	err := helpers.ParseRequest(r, &workloadResult)
 	helpers.PanicOnErrorAPI(err, w)
 	log.Println(workloadResult)
-	if stepChannel, isPresent := MapOfDeleteChannels[workloadResult.ID]; isPresent {
-		stepChannel <- workloadResult
-		defer close(stepChannel)
-		defer delete(MapOfDeleteChannels, workloadResult.ID)
+	if stepChannelDetails, isPresent := MapOfDeleteChannelDetails[workloadResult.UniqueKey]; isPresent {
+		stepChannelDetails.DeleteChannel <- workloadResult
+		defer close(stepChannelDetails.DeleteChannel)
+		defer delete(MapOfDeleteChannelDetails, workloadResult.UniqueKey)
 		log.Println("Sent channel status")
 	} else {
 		log.Println("Channel not found on process. Should send to raft here")

@@ -44,7 +44,7 @@ func executeWorkload(w http.ResponseWriter, req *http.Request) {
 	helpers.PanicOnErrorAPI(err, w)
 	err = ioutil.WriteFile(workloadPath, fileContentInBytes, 0777)
 	helpers.PanicOnErrorAPI(err, w)
-	go runKubeCTL(step.UniqueKey, workloadPath, step.UniqueKey)
+	go runKubeCTL(step.UniqueKey, workloadPath)
 	eRes := helpers.Response{
 		State: "Workload triggered",
 		Code:  200,
@@ -69,9 +69,9 @@ func replaceVariables(yamlFromDB types.YAMLFromDB, step types.Step, workloadPath
 	return []byte(yamlFromDB.Config)
 }
 
-func runKubeCTL(uniqueKey, workloadPath, uniqueID string) {
+func runKubeCTL(uniqueKey, workloadPath string) {
 	resChan := make(chan types.WorkloadResult)
-	go func(uniqueID string) {
+	go func(uniqueKey string) {
 		for {
 			select {
 			case wr := <-resChan:
@@ -82,7 +82,7 @@ func runKubeCTL(uniqueKey, workloadPath, uniqueID string) {
 				return
 			}
 		}
-	}(uniqueID)
+	}(uniqueKey)
 	defer close(resChan)
 	cmd := exec.Command("kubectl", "--kubeconfig", *ConfigPath, "create", "-f", workloadPath)
 	cmd.Stdout = os.Stdout
@@ -90,9 +90,9 @@ func runKubeCTL(uniqueKey, workloadPath, uniqueID string) {
 	err := cmd.Run()
 	if err != nil {
 		resChan <- types.WorkloadResult{
-			ID:      uniqueID,
-			Result:  "Failed",
-			Details: err.Error(),
+			UniqueKey: uniqueKey,
+			Result:    "Failed",
+			Details:   err.Error(),
 		}
 		return
 	}
@@ -107,9 +107,9 @@ func runKubeCTL(uniqueKey, workloadPath, uniqueID string) {
 	watcherI, err := Clientset.BatchV1().Jobs("default").Watch(listOpts)
 	if err != nil {
 		resChan <- types.WorkloadResult{
-			ID:      uniqueID,
-			Result:  "Failed",
-			Details: err.Error(),
+			UniqueKey: uniqueKey,
+			Result:    "Failed",
+			Details:   err.Error(),
 		}
 		return
 	}
@@ -123,9 +123,9 @@ func runKubeCTL(uniqueKey, workloadPath, uniqueID string) {
 			if !isPresent {
 				log.Println("Unknown Object Type")
 				resChan <- types.WorkloadResult{
-					ID:      uniqueID,
-					Result:  "Failed",
-					Details: "Unknown Object Type",
+					UniqueKey: uniqueKey,
+					Result:    "Failed",
+					Details:   "Unknown Object Type",
 				}
 				return
 			}
@@ -152,9 +152,9 @@ func runKubeCTL(uniqueKey, workloadPath, uniqueID string) {
 				if sendResponse {
 					log.Println("Stopping Poll")
 					resChan <- types.WorkloadResult{
-						ID:      uniqueID,
-						Result:  res,
-						Details: errMsg,
+						UniqueKey: uniqueKey,
+						Result:    res,
+						Details:   errMsg,
 					}
 					return
 				}
