@@ -16,3 +16,5 @@ floworch/*.yml
 
 kuborch/yaml/*.yaml
 test
+floworch/debug
+kuborch/debug
