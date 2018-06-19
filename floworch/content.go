@@ -27,3 +27,23 @@ func getContent(flowOrchRequest types.FlowOrchRequest) (types.YAMLFromDB, error)
 	}
 	return yamlFromDB, nil
 }
+
+func updateRunDetailsToDB(run *types.Run) (*types.Run, error) {
+	rdbSession, err := gorethink.Connect(gorethink.ConnectOpts{
+		Address:  "dockinsrethink.myntra.com:28015",
+		Database: "shuttleservices",
+	})
+	if err != nil {
+		return run, err
+	}
+	_, err = gorethink.Table(run.Stage + "_runs").Filter(map[string]interface{}{
+		"id": run.ID,
+	}).Update(run).RunWrite(rdbSession)
+	if err != nil {
+		return run, err
+	}
+	if err != nil {
+		return run, err
+	}
+	return run, nil
+}

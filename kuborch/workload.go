@@ -91,7 +91,7 @@ func runKubeCTL(uniqueKey, workloadPath string) {
 	if err != nil {
 		resChan <- types.WorkloadResult{
 			UniqueKey: uniqueKey,
-			Result:    "Failed",
+			Result:    types.FAILED,
 			Details:   err.Error(),
 		}
 		return
@@ -108,7 +108,7 @@ func runKubeCTL(uniqueKey, workloadPath string) {
 	if err != nil {
 		resChan <- types.WorkloadResult{
 			UniqueKey: uniqueKey,
-			Result:    "Failed",
+			Result:    types.FAILED,
 			Details:   err.Error(),
 		}
 		return
@@ -124,7 +124,7 @@ func runKubeCTL(uniqueKey, workloadPath string) {
 				log.Println("Unknown Object Type")
 				resChan <- types.WorkloadResult{
 					UniqueKey: uniqueKey,
-					Result:    "Failed",
+					Result:    types.FAILED,
 					Details:   "Unknown Object Type",
 				}
 				return
@@ -135,7 +135,7 @@ func runKubeCTL(uniqueKey, workloadPath string) {
 			case watch.Modified:
 				sendResponse := false
 				log.Println("New modification poll")
-				res := "Failed"
+				res := types.FAILED
 				errMsg := "Job Failed on K8s"
 				if job.Status.Failed > 0 {
 					log.Println("Workload Failed")
@@ -143,7 +143,7 @@ func runKubeCTL(uniqueKey, workloadPath string) {
 				}
 				if job.Status.Active == 0 {
 					if job.Status.Succeeded == 1 {
-						res = "Succeeded"
+						res = types.SUCCEEDED
 						errMsg = ""
 					}
 					log.Println("Workload Succeeded")

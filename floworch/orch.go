@@ -9,7 +9,8 @@ import (
 	"github.com/myntra/shuttle-engine/types"
 )
 
-func orchestrate(stageSteps []types.Step, flowOrchRequest types.FlowOrchRequest) error {
+func orchestrate(flowOrchRequest types.FlowOrchRequest, run *types.Run) bool {
+	updateRunDetailsToDB(run)
 	imageList := make(map[int]string)
 	completedSteps := map[int]bool{}
 	interval := 5
@@ -18,7 +19,7 @@ func orchestrate(stageSteps []types.Step, flowOrchRequest types.FlowOrchRequest)
 	isEnd := false
 	second := 0
 	hasWorkloadFailed := false
-	for (len(completedSteps) != len(stageSteps)) && !isEnd {
+	for (len(completedSteps) != len(run.Steps)) && !isEnd {
 		select {
 		case <-tick:
 			second += interval
@@ -47,11 +48,11 @@ func orchestrate(stageSteps []types.Step, flowOrchRequest types.FlowOrchRequest)
 					}
 				}
 				// Change the state of all non-ignoreError steps to Aborted
-				for index := 0; index < len(stageSteps); index++ {
-					if stageSteps[index].Status == "" {
-						if !stageSteps[index].IgnoreErrors {
-							stageSteps[index].Status = "Aborted"
-							completedSteps[stageSteps[index].ID] = true
+				for index := 0; index < len(run.Steps); index++ {
+					if run.Steps[index].Status == types.QUEUED {
+						if !run.Steps[index].IgnoreErrors {
+							run.Steps[index].Status = types.ABORTED
+							completedSteps[run.Steps[index].ID] = true
 						} else {
 							log.Printf("There are workloads which ignoreErrors. Running them")
 							isEnd = false
@@ -61,79 +62,86 @@ func orchestrate(stageSteps []types.Step, flowOrchRequest types.FlowOrchRequest)
 			}
 			log.Println(completedSteps)
 			log.Println(imageList)
-			for index := 0; index < len(stageSteps); index++ {
-				log.Printf("%s - Checking Step. State = %s", stageSteps[index].Name, stageSteps[index].Status)
+			wasThereAnAPIError := false
+			for index := 0; (index < len(run.Steps)) && !wasThereAnAPIError; index++ {
+				log.Printf("%s - Checking Step. State = %s", run.Steps[index].Name, run.Steps[index].Status)
 				// Check if each step if not executed, can be executed
-				if stageSteps[index].Status == "" {
-					log.Printf("%s - Step is not in Succeeded or Triggered or Failed or Aborted State", stageSteps[index].Name)
+				if run.Steps[index].Status == types.QUEUED {
+					log.Printf("%s - Step is Queued State", run.Steps[index].Name)
 					// Check if the step is eligible for execution
 					foundAnIncompleteRequiredStep := false
-					log.Printf("%s - Checking if Step requirements are satisfied", stageSteps[index].Name)
-					if len(stageSteps[index].Requires) <= len(completedSteps) {
-						log.Printf("%s - Requires Steps count less than Completed Steps count", stageSteps[index].Name)
-						for _, singleRequiredStepID := range stageSteps[index].Requires {
+					log.Printf("%s - Checking if Step requirements are satisfied", run.Steps[index].Name)
+					if len(run.Steps[index].Requires) <= len(completedSteps) {
+						log.Printf("%s - Requires Steps count less than Completed Steps count", run.Steps[index].Name)
+						for _, singleRequiredStepID := range run.Steps[index].Requires {
 							if !completedSteps[singleRequiredStepID] {
-								log.Printf("%s - Found an incomplete Step", stageSteps[index].Name)
+								log.Printf("%s - Found an incomplete Step", run.Steps[index].Name)
 								foundAnIncompleteRequiredStep = true
 								break
 							}
 						}
 						if !foundAnIncompleteRequiredStep {
-							if stageSteps[index].Image != "" {
-								if imageIndex, err := strconv.Atoi(stageSteps[index].Image); err == nil {
-									stageSteps[index].Image = imageList[imageIndex]
+							if run.Steps[index].Image != "" {
+								if imageIndex, err := strconv.Atoi(run.Steps[index].Image); err == nil {
+									run.Steps[index].Image = imageList[imageIndex]
 								}
-								stageSteps[index].Replacers["image"] = stageSteps[index].Image
+								run.Steps[index].Replacers["image"] = run.Steps[index].Image
 							}
-							_, err := helpers.Post("http://localhost:5600/executeworkload", stageSteps[index], nil)
+							_, err := helpers.Post("http://localhost:5600/executeworkload", run.Steps[index], nil)
 							if err != nil {
-								return err
+								log.Printf("thread - %s - Workload API has failed. Stopping in 5 seconds", run.Steps[index].Name)
+								hasWorkloadFailed = true
+								wasThereAnAPIError = true
+								break
 							}
 							go func(index int) {
 								deleteChannelDetails := types.DeleteChannelDetails{
 									ID:            flowOrchRequest.ID,
 									Stage:         flowOrchRequest.Stage,
 									DeleteChannel: make(chan types.WorkloadResult),
-									IgnoreErrors:  stageSteps[index].IgnoreErrors,
+									IgnoreErrors:  run.Steps[index].IgnoreErrors,
 								}
-								MapOfDeleteChannelDetails[stageSteps[index].UniqueKey] = deleteChannelDetails
-								log.Printf("thread - %s - Started Delete Channel", stageSteps[index].Name)
-								log.Println(stageSteps[index].UniqueKey)
+								MapOfDeleteChannelDetails[run.Steps[index].UniqueKey] = deleteChannelDetails
+								log.Printf("thread - %s - Started Delete Channel", run.Steps[index].Name)
+								log.Println(run.Steps[index].UniqueKey)
 								log.Println(MapOfDeleteChannelDetails)
 								// Hit kuborch API to create job
 								everySecond := time.Tick(5 * time.Second)
 								for {
-									log.Printf("thread - %s - Workload not complete", stageSteps[index].Name)
+									log.Printf("thread - %s - Workload not complete", run.Steps[index].Name)
 									select {
-									case statusInChannel := <-MapOfDeleteChannelDetails[stageSteps[index].UniqueKey].DeleteChannel:
-										log.Printf("thread - %s - Got a channel req - %v", stageSteps[index].Name, statusInChannel)
-										completedSteps[stageSteps[index].ID] = true
-										if statusInChannel.Result != "Succeeded" {
+									case statusInChannel := <-MapOfDeleteChannelDetails[run.Steps[index].UniqueKey].DeleteChannel:
+										log.Printf("thread - %s - Got a channel req - %v", run.Steps[index].Name, statusInChannel)
+										completedSteps[run.Steps[index].ID] = true
+										if statusInChannel.Result != types.SUCCEEDED {
 											hasWorkloadFailed = true
-											log.Printf("thread - %s - Workload has failed. Stopping in 5 seconds", stageSteps[index].Name)
+											log.Printf("thread - %s - Workload has failed. Stopping in 5 seconds", run.Steps[index].Name)
 										}
-										stageSteps[index].Status = statusInChannel.Result
-										log.Printf("thread - %s - Sleeping Done", stageSteps[index].Name)
-										if stageSteps[index].CommitContainer {
-											imageList[index] = stageSteps[index].UniqueKey + ":" + stageSteps[index].Name
+										run.Steps[index].Status = statusInChannel.Result
+										log.Printf("thread - %s - Sleeping Done", run.Steps[index].Name)
+										if run.Steps[index].CommitContainer {
+											imageList[index] = run.Steps[index].UniqueKey + ":" + run.Steps[index].Name
 										}
+										updateRunDetailsToDB(run)
 										return
+									// This might not be needed
 									case <-everySecond:
-										log.Printf("thread - %s - Nothing on the channels", stageSteps[index].Name)
-										log.Printf("thread - %s - Context - %s", stageSteps[index].Name, stageSteps[index].UniqueKey)
+										log.Printf("thread - %s - Nothing on the channels", run.Steps[index].Name)
+										log.Printf("thread - %s - Context - %s", run.Steps[index].Name, run.Steps[index].UniqueKey)
 									}
 								}
 							}(index)
-							stageSteps[index].Status = "Triggered"
-							log.Printf("%s - Triggered Step", stageSteps[index].Name)
+							run.Steps[index].Status = types.TRIGGERED
+							updateRunDetailsToDB(run)
+							log.Printf("%s - Triggered Step", run.Steps[index].Name)
 						} else {
-							log.Printf("%s - Found an incomplete Required Step", stageSteps[index].Name)
+							log.Printf("%s - Found an incomplete Required Step", run.Steps[index].Name)
 						}
 					} else {
-						log.Printf("%s - Step requirements NOT satisfied. Skipping", stageSteps[index].Name)
+						log.Printf("%s - Step requirements NOT satisfied. Skipping", run.Steps[index].Name)
 					}
 				} else {
-					log.Printf("%s - Step State is %s. Skipping", stageSteps[index].Name, stageSteps[index].Status)
+					log.Printf("%s - Step State is %s. Skipping", run.Steps[index].Name, run.Steps[index].Status)
 				}
 			}
 		case <-timeout:
@@ -141,5 +149,6 @@ func orchestrate(stageSteps []types.Step, flowOrchRequest types.FlowOrchRequest)
 			log.Println("Timed out")
 		}
 	}
-	return nil
+	updateRunDetailsToDB(run)
+	return hasWorkloadFailed
 }
