@@ -85,7 +85,11 @@ func orchestrate(flowOrchRequest types.FlowOrchRequest, run *types.Run) bool {
 								if imageIndex, err := strconv.Atoi(run.Steps[index].Image); err == nil {
 									run.Steps[index].Image = imageList[imageIndex]
 								}
+								// Add extra and KV pair replacers
 								run.Steps[index].Replacers["image"] = run.Steps[index].Image
+								for _, singleKVPair := range run.KVPairsSavedOnSuccess {
+									run.Steps[index].Replacers[singleKVPair.Key] = singleKVPair.Value
+								}
 							}
 							_, err := helpers.Post("http://localhost:5600/executeworkload", run.Steps[index], nil)
 							if err != nil {
@@ -122,7 +126,7 @@ func orchestrate(flowOrchRequest types.FlowOrchRequest, run *types.Run) bool {
 										if run.Steps[index].CommitContainer {
 											imageList[index] = run.Steps[index].UniqueKey + ":" + run.Steps[index].Name
 										}
-										updateRunDetailsToDB(run)
+										saveKVPairs(run.Steps[index], run)
 										return
 									// This might not be needed
 									case <-everySecond:
@@ -131,7 +135,7 @@ func orchestrate(flowOrchRequest types.FlowOrchRequest, run *types.Run) bool {
 									}
 								}
 							}(index)
-							run.Steps[index].Status = types.TRIGGERED
+							run.Steps[index].Status = types.INPROGRESS
 							updateRunDetailsToDB(run)
 							log.Printf("%s - Triggered Step", run.Steps[index].Name)
 						} else {
