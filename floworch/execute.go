@@ -22,6 +22,7 @@ func executeHandler(w http.ResponseWriter, r *http.Request) {
 		helpers.PanicOnErrorAPI(err, w)
 		return
 	}
+
 	// Replace Variables from API
 	replaceFromAPI(&yamlFromDB, flowOrchRequest)
 
@@ -31,24 +32,30 @@ func executeHandler(w http.ResponseWriter, r *http.Request) {
 		helpers.PanicOnErrorAPI(err, w)
 		return
 	}
-	// Setup Stage Bucket
-	// TODO
 
 	// Convert Meta Tags
 	for parser := 0; parser < len(stageSteps); parser++ {
 		err = convertMetaTagsToReplacers(&stageSteps[parser], flowOrchRequest, parser)
+		// Setting all steps to QUEUED state
+		stageSteps[parser].Status = types.QUEUED
 		if err != nil {
 			helpers.PanicOnErrorAPI(err, w)
 			return
 		}
 	}
+
+	// Start goroutine to complete API but run the workload
 	go func() {
-		// Start Ticker
-		err = orchestrate(stageSteps, flowOrchRequest)
-		if err != nil {
-			helpers.FailOnErr(err, nil)
-			return
+		run := &types.Run{
+			ID:     flowOrchRequest.ID,
+			Stage:  flowOrchRequest.Stage,
+			Status: types.INPROGRESS,
+			Steps:  stageSteps,
 		}
+		// Start Ticker
+		hasAnyWorkloadFailed := orchestrate(flowOrchRequest, run)
+		// Update Run status
+		updateStatus(run, hasAnyWorkloadFailed)
 	}()
 	helpers.SendResponse("Workload triggered", 200, w)
 }

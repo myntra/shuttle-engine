@@ -42,3 +42,16 @@ type DeleteChannelDetails struct {
 	DeleteChannel chan WorkloadResult `json:"deleteChannel"`
 	IgnoreErrors  bool                `json:"ignoreErrors"`
 }
+
+const (
+	// QUEUED ...
+	QUEUED = "Queued"
+	// INPROGRESS ...
+	INPROGRESS = "In Progress"
+	// SUCCEEDED ...
+	SUCCEEDED = "Succeeded"
+	// ABORTED ...
+	ABORTED = "Aborted"
+	// FAILED ...
+	FAILED = "Failed"
+)
