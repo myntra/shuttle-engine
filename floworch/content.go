@@ -36,9 +36,9 @@ func updateRunDetailsToDB(run *types.Run) (*types.Run, error) {
 	if err != nil {
 		return run, err
 	}
-	_, err = gorethink.Table(run.Stage + "_runs").Filter(map[string]interface{}{
-		"id": run.ID,
-	}).Update(run).RunWrite(rdbSession)
+	_, err = gorethink.Table(run.Stage+"_runs").Insert(run, gorethink.InsertOpts{
+		Conflict: "update",
+	}).RunWrite(rdbSession)
 	if err != nil {
 		return run, err
 	}
