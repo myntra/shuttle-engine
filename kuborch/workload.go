@@ -26,7 +26,7 @@ func executeWorkload(w http.ResponseWriter, req *http.Request) {
 	step := types.Step{}
 	helpers.PanicOnErrorAPI(helpers.ParseRequest(req, &step), w)
 	// Fetch yaml from predefined_steps table
-	cursor, err := r.DB(config.GetConfig().ShuttleDBName).Table(config.GetConfig().PredefinedStepsTable).Filter(
+	cursor, err := r.DB(config.GetConfig().ShuttleDBName).Table("predefined_steps").Filter(
 		map[string]interface{}{
 			"name": step.StepTemplate,
 		}).Run(config.RethinkSession)

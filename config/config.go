@@ -28,15 +28,14 @@ var Env = os.Getenv("ENV")
 
 //Config ...
 type Config struct {
-	KuborchPort          int    `yaml:"kuborchPort"`
-	FloworchPort         int    `yaml:"floworchPort"`
-	BuildHubURL          string `yaml:"buildHubURL"`
-	KuborchURL           string `yaml:"kuborchURL"`
-	FloworchURL          string `yaml:"floworchURL"`
-	KubConfigPath        string `yaml:"kubConfigPath"`
-	RethinkHost          string `yaml:"rethinkHost"`
-	ShuttleDBName        string `yaml:"shuttleDBName"`
-	PredefinedStepsTable string `yaml:"predefinedStepsTable"`
+	KuborchPort   int    `yaml:"kuborchPort"`
+	FloworchPort  int    `yaml:"floworchPort"`
+	BuildHubURL   string `yaml:"buildHubURL"`
+	KuborchURL    string `yaml:"kuborchURL"`
+	FloworchURL   string `yaml:"floworchURL"`
+	KubConfigPath string `yaml:"kubConfigPath"`
+	RethinkHost   string `yaml:"rethinkHost"`
+	ShuttleDBName string `yaml:"shuttleDBName"`
 }
 
 var config Config

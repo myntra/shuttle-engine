@@ -6,4 +6,3 @@ floworchURL: http://localhost:5500
 kubConfigPath: ~/.kube/config
 rethinkHost: localhost:28015
 shuttleDBName: shuttleservices
-predefinedStepsTable: predefined_steps
