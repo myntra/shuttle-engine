@@ -59,11 +59,8 @@ func InitRethinkDBSession() error {
 		log.Printf("Cannot connect to rethinkdb. Exiting...,Error: %s", err)
 		return err
 	}
-
 	session.SetMaxOpenConns(10)
-
 	RethinkSession = session
-
 	return nil
 }
 
@@ -92,6 +89,5 @@ func ReadConfig() error {
 
 // GetConfig ...
 func GetConfig() Config {
-
 	return config
 }
