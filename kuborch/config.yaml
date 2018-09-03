@@ -1,6 +1,0 @@
-port: 5600
-buildHubURL: buildhub.myntra.com
-floworchURL: floworch.myntra.com
-kubConfigPath: ~/.kube/config
-rethinkHost: dockinsrethink.myntra.com:28015
-rethinkDB: shuttleservices

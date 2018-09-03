@@ -1,0 +1,9 @@
+kuborchPort: 5600
+floworchPort: 5500
+buildHubURL: localhub.myntra.com:5000
+kuborchURL: http://localhost:5600
+floworchURL: http://localhost:5500
+kubConfigPath: ~/.kube/config
+rethinkHost: localhost:28015
+shuttleDBName: shuttleservices
+predefinedStepsTable: predefined_steps

@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/myntra/shuttle-engine/config"
 	"github.com/myntra/shuttle-engine/helpers"
 	"github.com/myntra/shuttle-engine/types"
 
@@ -25,14 +26,10 @@ func executeWorkload(w http.ResponseWriter, req *http.Request) {
 	step := types.Step{}
 	helpers.PanicOnErrorAPI(helpers.ParseRequest(req, &step), w)
 	// Fetch yaml from predefined_steps table
-	rdbSession, err := r.Connect(r.ConnectOpts{
-		Address:  "dockinsrethink.myntra.com:28015",
-		Database: "shuttleservices",
-	})
-	helpers.PanicOnErrorAPI(err, w)
-	cursor, err := r.Table("predefined_steps").Filter(map[string]interface{}{
-		"name": step.StepTemplate,
-	}).Run(rdbSession)
+	cursor, err := r.DB(config.GetConfig().ShuttleDBName).Table(config.GetConfig().PredefinedStepsTable).Filter(
+		map[string]interface{}{
+			"name": step.StepTemplate,
+		}).Run(config.RethinkSession)
 	helpers.PanicOnErrorAPI(err, w)
 	defer cursor.Close()
 	var yamlFromDB types.YAMLFromDB
@@ -75,7 +72,7 @@ func runKubeCTL(uniqueKey, workloadPath string) {
 		for {
 			select {
 			case wr := <-resChan:
-				_, err := helpers.Post("http://localhost:5500/callback", wr, nil)
+				_, err := helpers.Post(config.GetConfig().FloworchURL+"/callback", wr, nil)
 				if err != nil {
 					log.Println(err)
 				}
@@ -84,7 +81,7 @@ func runKubeCTL(uniqueKey, workloadPath string) {
 		}
 	}(uniqueKey)
 	defer close(resChan)
-	cmd := exec.Command("kubectl", "--kubeconfig", *ConfigPath, "create", "-f", workloadPath)
+	cmd := exec.Command("kubectl", "--kubeconfig", config.GetConfig().KubConfigPath, "create", "-f", workloadPath)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	err := cmd.Run()

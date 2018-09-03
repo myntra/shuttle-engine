@@ -1,22 +1,16 @@
 package main
 
 import (
+	"github.com/myntra/shuttle-engine/config"
 	"github.com/myntra/shuttle-engine/types"
-	gorethink "gopkg.in/gorethink/gorethink.v4"
+	r "gopkg.in/gorethink/gorethink.v4"
 )
 
 func getContent(flowOrchRequest types.FlowOrchRequest) (types.YAMLFromDB, error) {
 	var yamlFromDB types.YAMLFromDB
-	rdbSession, err := gorethink.Connect(gorethink.ConnectOpts{
-		Address:  "dockinsrethink.myntra.com:28015",
-		Database: "shuttleservices",
-	})
-	if err != nil {
-		return yamlFromDB, err
-	}
-	cursor, err := gorethink.Table(flowOrchRequest.Stage + "_configs").Filter(map[string]interface{}{
+	cursor, err := r.DB(config.GetConfig().ShuttleDBName).Table(flowOrchRequest.Stage + "_configs").Filter(map[string]interface{}{
 		"id": flowOrchRequest.StageFilter,
-	}).Run(rdbSession)
+	}).Run(config.RethinkSession)
 	if err != nil {
 		return yamlFromDB, err
 	}
@@ -29,16 +23,9 @@ func getContent(flowOrchRequest types.FlowOrchRequest) (types.YAMLFromDB, error)
 }
 
 func updateRunDetailsToDB(run *types.Run) (*types.Run, error) {
-	rdbSession, err := gorethink.Connect(gorethink.ConnectOpts{
-		Address:  "dockinsrethink.myntra.com:28015",
-		Database: "shuttleservices",
-	})
-	if err != nil {
-		return run, err
-	}
-	_, err = gorethink.Table(run.Stage + "_runs").Filter(map[string]interface{}{
+	_, err := r.DB(config.GetConfig().ShuttleDBName).Table(run.Stage + "_runs").Filter(map[string]interface{}{
 		"id": run.ID,
-	}).Update(run).RunWrite(rdbSession)
+	}).Update(run).RunWrite(config.RethinkSession)
 	if err != nil {
 		return run, err
 	}

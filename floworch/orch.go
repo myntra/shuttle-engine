@@ -5,6 +5,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/myntra/shuttle-engine/config"
+
 	"github.com/myntra/shuttle-engine/helpers"
 	"github.com/myntra/shuttle-engine/types"
 )
@@ -91,7 +93,7 @@ func orchestrate(flowOrchRequest types.FlowOrchRequest, run *types.Run) bool {
 									run.Steps[index].Replacers[singleKVPair.Key] = singleKVPair.Value
 								}
 							}
-							_, err := helpers.Post("http://localhost:5600/executeworkload", run.Steps[index], nil)
+							_, err := helpers.Post(config.GetConfig().KuborchURL+"/executeworkload", run.Steps[index], nil)
 							if err != nil {
 								log.Printf("thread - %s - Workload API has failed. Stopping in 5 seconds", run.Steps[index].Name)
 								hasWorkloadFailed = true

@@ -18,7 +18,7 @@ var Port int
 var RethinkSession *r.Session
 
 // ConfigYamlFolder config file folder
-var ConfigYamlFolder = ""
+var ConfigYamlFolder = "../"
 
 // ConfigYaml config filename
 var ConfigYaml = "config.yaml"
@@ -28,13 +28,15 @@ var Env = os.Getenv("ENV")
 
 //Config ...
 type Config struct {
-	Port          int    `yaml:"port"`
-	BuildHubURL   string `yaml:"buildHubURL"`
-	KuborchURL    string `yaml:"kuborchURL"`
-	FloworchURL   string `yaml:"floworchURL"`
-	KubConfigPath string `yaml:"kubConfigPath"`
-	RethinkHost   string `yaml:"rethinkHost"`
-	RethinkDB     string `yaml:"rethinkDB"`
+	KuborchPort          int    `yaml:"kuborchPort"`
+	FloworchPort         int    `yaml:"floworchPort"`
+	BuildHubURL          string `yaml:"buildHubURL"`
+	KuborchURL           string `yaml:"kuborchURL"`
+	FloworchURL          string `yaml:"floworchURL"`
+	KubConfigPath        string `yaml:"kubConfigPath"`
+	RethinkHost          string `yaml:"rethinkHost"`
+	ShuttleDBName        string `yaml:"shuttleDBName"`
+	PredefinedStepsTable string `yaml:"predefinedStepsTable"`
 }
 
 var config Config
@@ -46,13 +48,12 @@ func InitFlags() {
 }
 
 //InitRethinkDBSession ...
-func InitRethinkDBSession(host, dbName string) error {
-	log.Printf("InitRethinkDBSession:%s", host)
+func InitRethinkDBSession() error {
+	log.Printf("InitRethinkDBSession:%s", config.RethinkHost)
 	session, err := r.Connect(r.ConnectOpts{
-		Address:  host,
-		Database: dbName,
-		MaxIdle:  10,
-		MaxOpen:  10,
+		Address: config.RethinkHost,
+		MaxIdle: 10,
+		MaxOpen: 10,
 	})
 
 	if err != nil {

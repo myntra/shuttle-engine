@@ -1,6 +1,0 @@
-port: 5500
-buildHubURL: localhub.myntra.com:5000
-kuborchURL: localhost:5600
-kubConfigPath: ~/.kube/config
-rethinkHost: localhost:28015
-rethinkDB: shuttleservices
