@@ -7,3 +7,14 @@ vendor
 
 # Config YAMLs
 kuborch/yaml
+
+# Test Files
+floworch/creds
+floworch/workloads-samples
+floworch/*.yaml
+floworch/*.yml
+
+kuborch/yaml/*.yaml
+test
+floworch/debug
+kuborch/debug

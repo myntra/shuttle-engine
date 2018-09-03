@@ -1,14 +1,12 @@
-hash: 1ad683554ffeb7ff7b2461d65805b89ed66aaac49d6dddc987486bb097fd1780
-updated: 2018-05-27T13:41:28.010314186+05:30
+hash: b7d16483962713f53e5b3dabb1c808f57eacb769bf604592d25f58e4d5fd28f8
+updated: 2018-05-31T01:52:48.455194288+05:30
 imports:
 - name: github.com/cenkalti/backoff
   version: f756bc9a37f808627c8c1b26d2d6ea40c468440b
-- name: github.com/davecgh/go-spew
-  version: 782f4967f2dc4564575ca782fe2d04090b5faca8
-  subpackages:
-  - spew
 - name: github.com/ghodss/yaml
-  version: 73d445a93680fa1a78ae23a5839bad48f32ba1ee
+  version: 0ca9ea5df5451ffdf184b4428c902747c2c11cd7
+- name: github.com/go-errors/errors
+  version: a6af135bd4e28680facf08a3d206b454abc877a4
 - name: github.com/gogo/protobuf
   version: c0656edd0d9eab7c66d1eb0c568f9039345796f7
   subpackages:
@@ -38,10 +36,6 @@ imports:
   version: e3702bed27f0d39777b0b37b664b6280e8ef8fbf
 - name: github.com/hailocab/go-hostpool
   version: e80d13ce29ede4452c43dea11e79b9bc8a15b478
-- name: github.com/hashicorp/golang-lru
-  version: a0d98a5f288019575c6d1f4bb1573fef2d1fcdc4
-  subpackages:
-  - simplelru
 - name: github.com/howeyc/gopass
   version: bf9dde6d0d2c004a008c27aaee91170c786f6db8
 - name: github.com/imdario/mergo
@@ -99,7 +93,7 @@ imports:
 - name: gopkg.in/yaml.v1
   version: 5420a8b6744d3b0345ab293f6fcba19c978f1183
 - name: gopkg.in/yaml.v2
-  version: 670d4cfef0544295bc27a114dbac37980d83185a
+  version: 5420a8b6744d3b0345ab293f6fcba19c978f1183
 - name: k8s.io/api
   version: 73d903622b7391f3312dcbac6483fed484e185f8
   subpackages:
@@ -137,7 +131,6 @@ imports:
   - pkg/api/errors
   - pkg/api/meta
   - pkg/api/resource
-  - pkg/apis/meta/internalversion
   - pkg/apis/meta/v1
   - pkg/apis/meta/v1/unstructured
   - pkg/apis/meta/v1beta1
@@ -155,9 +148,7 @@ imports:
   - pkg/runtime/serializer/versioning
   - pkg/selection
   - pkg/types
-  - pkg/util/cache
   - pkg/util/clock
-  - pkg/util/diff
   - pkg/util/errors
   - pkg/util/framer
   - pkg/util/intstr
@@ -213,19 +204,15 @@ imports:
   - rest
   - rest/watch
   - tools/auth
-  - tools/cache
   - tools/clientcmd
   - tools/clientcmd/api
   - tools/clientcmd/api/latest
   - tools/clientcmd/api/v1
   - tools/metrics
-  - tools/pager
   - tools/reference
   - transport
-  - util/buffer
   - util/cert
   - util/flowcontrol
   - util/homedir
   - util/integer
-  - util/retry
 testImports: []

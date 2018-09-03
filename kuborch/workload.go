@@ -1,17 +1,16 @@
 package main
 
 import (
-	"bytes"
 	"encoding/json"
-	"html/template"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
 	"os/exec"
-	"strconv"
+	"strings"
+	"time"
 
-	"github.com/myntra/shuttle-engine/config"
 	"github.com/myntra/shuttle-engine/helpers"
 	"github.com/myntra/shuttle-engine/types"
 
@@ -23,29 +22,29 @@ import (
 )
 
 func executeWorkload(w http.ResponseWriter, req *http.Request) {
-	workloadDetails := types.WorkloadDetails{}
-	helpers.PanicOnErrorAPI(helpers.ParseRequest(req, &workloadDetails), w)
+	step := types.Step{}
+	helpers.PanicOnErrorAPI(helpers.ParseRequest(req, &step), w)
 	// Fetch yaml from predefined_steps table
-	// log.Println(workloadDetails)
+	rdbSession, err := r.Connect(r.ConnectOpts{
+		Address:  "dockinsrethink.myntra.com:28015",
+		Database: "shuttleservices",
+	})
+	helpers.PanicOnErrorAPI(err, w)
 	cursor, err := r.Table("predefined_steps").Filter(map[string]interface{}{
-		"name": workloadDetails.Task,
-	}).Run(config.RethinkSession)
+		"name": step.StepTemplate,
+	}).Run(rdbSession)
 	helpers.PanicOnErrorAPI(err, w)
 	defer cursor.Close()
-	var yamlFromRethink types.YAMLFromRethink
-	err = cursor.One(&yamlFromRethink)
+	var yamlFromDB types.YAMLFromDB
+	err = cursor.One(&yamlFromDB)
 	helpers.PanicOnErrorAPI(err, w)
-	// Workload name of the format - {{.Repo}}-{{.PRID}}-{{.SrcTopCommmit}}-{{.Task}}
-	workloadName := workloadDetails.Repo +
-		"-" + strconv.Itoa(workloadDetails.PRID) +
-		"-" + workloadDetails.SrcTopCommmit +
-		"-" + workloadDetails.Task
-	workloadPath := "./yaml/" + workloadName + ".yaml"
-	fileContentInBytes, err := replaceVariables(yamlFromRethink, workloadDetails, workloadPath)
+
+	workloadPath := "./yaml/" + step.UniqueKey + ".yaml"
+	fileContentInBytes := replaceVariables(yamlFromDB, step, workloadPath)
 	helpers.PanicOnErrorAPI(err, w)
 	err = ioutil.WriteFile(workloadPath, fileContentInBytes, 0777)
 	helpers.PanicOnErrorAPI(err, w)
-	go runKubeCTL(workloadName, workloadPath, workloadDetails.WorkloadID)
+	go runKubeCTL(step.UniqueKey, workloadPath)
 	eRes := helpers.Response{
 		State: "Workload triggered",
 		Code:  200,
@@ -56,33 +55,64 @@ func executeWorkload(w http.ResponseWriter, req *http.Request) {
 	w.Write(inBytes)
 }
 
-func replaceVariables(yfr types.YAMLFromRethink, wd types.WorkloadDetails, workloadPath string) ([]byte, error) {
-	// Some replaces happen here
-	configBuf := new(bytes.Buffer)
-	// log.Println(yfr.Config)
-	tmpl := template.Must(template.New(workloadPath).Parse(yfr.Config))
-	err := tmpl.Execute(configBuf, wd)
-	if err != nil {
-		return nil, err
+func replaceVariables(yamlFromDB types.YAMLFromDB, step types.Step, workloadPath string) []byte {
+	// // Some replaces happen here
+	fmt.Println(step.Replacers)
+	for singleReplacer, value := range step.Replacers {
+		yamlFromDB.Config = strings.Replace(yamlFromDB.Config, "{{."+singleReplacer+"}}", value, -1)
 	}
-	return configBuf.Bytes(), nil
+	// Twice for overlapping substitution
+	for singleReplacer, value := range step.Replacers {
+		yamlFromDB.Config = strings.Replace(yamlFromDB.Config, "{{."+singleReplacer+"}}", value, -1)
+	}
+	fmt.Println(yamlFromDB.Config)
+	return []byte(yamlFromDB.Config)
 }
 
-func runKubeCTL(workloadName, workloadPath, workloadID string) {
-	cmd := exec.Command("kubectl", "create", "-f", workloadPath)
+func runKubeCTL(uniqueKey, workloadPath string) {
+	resChan := make(chan types.WorkloadResult)
+	go func(uniqueKey string) {
+		for {
+			select {
+			case wr := <-resChan:
+				_, err := helpers.Post("http://localhost:5500/callback", wr, nil)
+				if err != nil {
+					log.Println(err)
+				}
+				return
+			}
+		}
+	}(uniqueKey)
+	defer close(resChan)
+	cmd := exec.Command("kubectl", "--kubeconfig", *ConfigPath, "create", "-f", workloadPath)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	err := cmd.Run()
-	helpers.FailOnErr(err)
+	if err != nil {
+		resChan <- types.WorkloadResult{
+			UniqueKey: uniqueKey,
+			Result:    types.FAILED,
+			Details:   err.Error(),
+		}
+		return
+	}
 	log.Println("yaml executed")
 	// Poll Kube API for result of workload
-	log.Println("job-name=" + workloadName)
+	log.Println("job-name=" + uniqueKey)
 	listOpts := metav1.ListOptions{
-		LabelSelector: "job-name=" + workloadName,
+		LabelSelector: "job-name=" + uniqueKey,
 	}
 	log.Println("listopts done")
+	time.Sleep(time.Duration(2 * time.Second))
 	watcherI, err := Clientset.BatchV1().Jobs("default").Watch(listOpts)
-	helpers.FailOnErr(err)
+	if err != nil {
+		resChan <- types.WorkloadResult{
+			UniqueKey: uniqueKey,
+			Result:    types.FAILED,
+			Details:   err.Error(),
+		}
+		return
+	}
 	log.Println("Created watcherI")
 	ch := watcherI.ResultChan()
 	defer watcherI.Stop()
@@ -92,28 +122,40 @@ func runKubeCTL(workloadName, workloadPath, workloadID string) {
 			job, isPresent := event.Object.(*batchv1.Job)
 			if !isPresent {
 				log.Println("Unknown Object Type")
-				continue
+				resChan <- types.WorkloadResult{
+					UniqueKey: uniqueKey,
+					Result:    types.FAILED,
+					Details:   "Unknown Object Type",
+				}
+				return
 			}
 			log.Printf("Job: %s -> Active: %d, Succeeded: %d, Failed: %d",
 				job.Name, job.Status.Active, job.Status.Succeeded, job.Status.Failed)
 			switch event.Type {
 			case watch.Modified:
+				sendResponse := false
 				log.Println("New modification poll")
+				res := types.FAILED
+				errMsg := "Job Failed on K8s"
+				if job.Status.Failed > 0 {
+					log.Println("Workload Failed")
+					sendResponse = true
+				}
 				if job.Status.Active == 0 {
-					workloadResult := types.WorkloadResult{
-						ID:     workloadID,
-						Result: "Failed",
-					}
 					if job.Status.Succeeded == 1 {
-						log.Println("Setting Succeeded")
-						workloadResult.Result = "Succeeded"
+						res = types.SUCCEEDED
+						errMsg = ""
 					}
-					log.Println("Hitting API")
-					_, err := helpers.Post(config.GetConfig().FloworchURL+"/callback", workloadResult, nil)
-					if err != nil {
-						log.Println(err)
-					}
+					log.Println("Workload Succeeded")
+					sendResponse = true
+				}
+				if sendResponse {
 					log.Println("Stopping Poll")
+					resChan <- types.WorkloadResult{
+						UniqueKey: uniqueKey,
+						Result:    res,
+						Details:   errMsg,
+					}
 					return
 				}
 			}

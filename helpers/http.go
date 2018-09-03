@@ -16,3 +16,14 @@ func ParseRequest(request *http.Request, payload interface{}) error {
 	err = json.Unmarshal(body, payload)
 	return err
 }
+
+// SendResponse ...
+func SendResponse(response string, code int, w http.ResponseWriter) {
+	inBytes, err := json.Marshal(map[string]string{
+		"response": response,
+	})
+	PanicOnErrorAPI(err, w)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(code)
+	w.Write(inBytes)
+}

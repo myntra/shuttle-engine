@@ -2,25 +2,56 @@ package types
 
 // WorkloadDetails ...
 type WorkloadDetails struct {
-	ImageList       map[int]string `json:"imageList"`
-	Stage           string         `json:"stage"`
-	Repo            string         `json:"repo"`
-	SrcBranch       string         `json:"srcBranch"`
-	DstBranch       string         `json:"dstBranch"`
-	PRID            int            `json:"prID"`
-	SrcTopCommmit   string         `json:"sourceTopCommit"`
-	ID              string         `json:"id"`
-	WorkloadID      string         `json:"workloadID"`
-	Task            string         `json:"task"`
-	RegistryURL     string         `json:"registryURL"`
-	Image           string         `json:"image"`
-	CommitContainer bool           `json:"commitContainer"`
-	RepoWebsite     string         `json:"repoWebsite"`
-	RepoSlug        string         `json:"repoSlug"`
+	Stage            string `json:"stage"`
+	Repo             string `json:"repo"`
+	SrcBranch        string `json:"srcBranch"`
+	DstBranch        string `json:"dstBranch"`
+	PRID             int    `json:"prID"`
+	SrcTopCommit     string `json:"sourceTopCommit"`
+	ID               string `json:"id"`
+	WorkloadID       string `json:"workloadID"`
+	Task             string `json:"task"`
+	RegistryURL      string `json:"registryURL"`
+	Image            string `json:"image"`
+	CommitContainer  bool   `json:"commitContainer"`
+	RepoWebsite      string `json:"repoWebsite"`
+	RepoSlug         string `json:"repoSlug"`
+	CustomProperties string `yaml:"customProperties"`
+	StepID           int    `json:"stepID"`
 }
 
 // WorkloadResult ...
 type WorkloadResult struct {
-	ID     string `json:"id"`
-	Result string `json:"result"`
+	UniqueKey string `json:"uniqueKey"`
+	Result    string `json:"result"`
+	Details   string `json:"details"`
 }
+
+// FlowOrchRequest ...
+type FlowOrchRequest struct {
+	Stage       string            `json:"stage"`
+	StageFilter string            `json:"stageFilter"`
+	Meta        map[string]string `json:"meta"`
+	ID          string            `json:"id"`
+}
+
+// DeleteChannelDetails ...
+type DeleteChannelDetails struct {
+	ID            string              `json:"id"`
+	Stage         string              `json:"stage"`
+	DeleteChannel chan WorkloadResult `json:"deleteChannel"`
+	IgnoreErrors  bool                `json:"ignoreErrors"`
+}
+
+const (
+	// QUEUED ...
+	QUEUED = "Queued"
+	// INPROGRESS ...
+	INPROGRESS = "In Progress"
+	// SUCCEEDED ...
+	SUCCEEDED = "Succeeded"
+	// ABORTED ...
+	ABORTED = "Aborted"
+	// FAILED ...
+	FAILED = "Failed"
+)

@@ -12,12 +12,12 @@ import (
 func callbackHandler(w http.ResponseWriter, r *http.Request) {
 	workloadResult := types.WorkloadResult{}
 	err := helpers.ParseRequest(r, &workloadResult)
-	helpers.FailOnErr(err)
+	helpers.PanicOnErrorAPI(err, w)
 	log.Println(workloadResult)
-	if stepChannel, isPresent := MapOfDeleteChannels[workloadResult.ID]; isPresent {
-		stepChannel <- workloadResult
-		defer close(stepChannel)
-		defer delete(MapOfDeleteChannels, workloadResult.ID)
+	if stepChannelDetails, isPresent := MapOfDeleteChannelDetails[workloadResult.UniqueKey]; isPresent {
+		stepChannelDetails.DeleteChannel <- workloadResult
+		defer close(stepChannelDetails.DeleteChannel)
+		defer delete(MapOfDeleteChannelDetails, workloadResult.UniqueKey)
 		log.Println("Sent channel status")
 	} else {
 		log.Println("Channel not found on process. Should send to raft here")
@@ -27,7 +27,7 @@ func callbackHandler(w http.ResponseWriter, r *http.Request) {
 		Code:  200,
 	}
 	crInBytes, err := json.Marshal(&cr)
-	helpers.FailOnErr(err)
+	helpers.PanicOnErrorAPI(err, w)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(200)
 	w.Write(crInBytes)
