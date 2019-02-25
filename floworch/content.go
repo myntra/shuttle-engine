@@ -14,6 +14,7 @@ func getContent(flowOrchRequest types.FlowOrchRequest) (types.YAMLFromDB, error)
 	if err != nil {
 		return yamlFromDB, err
 	}
+	defer rdbSession.Close()
 	cursor, err := gorethink.Table(flowOrchRequest.Stage + "_configs").Filter(map[string]interface{}{
 		"id": flowOrchRequest.StageFilter,
 	}).Run(rdbSession)
@@ -36,9 +37,10 @@ func updateRunDetailsToDB(run *types.Run) (*types.Run, error) {
 	if err != nil {
 		return run, err
 	}
-	_, err = gorethink.Table(run.Stage + "_runs").Filter(map[string]interface{}{
-		"id": run.ID,
-	}).Update(run).RunWrite(rdbSession)
+	defer rdbSession.Close()
+	_, err = gorethink.Table(run.Stage+"_runs").Insert(run, gorethink.InsertOpts{
+		Conflict: "update",
+	}).RunWrite(rdbSession)
 	if err != nil {
 		return run, err
 	}

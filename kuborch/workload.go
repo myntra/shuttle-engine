@@ -30,6 +30,7 @@ func executeWorkload(w http.ResponseWriter, req *http.Request) {
 		Database: "shuttleservices",
 	})
 	helpers.PanicOnErrorAPI(err, w)
+	defer rdbSession.Close()
 	cursor, err := r.Table("predefined_steps").Filter(map[string]interface{}{
 		"name": step.StepTemplate,
 	}).Run(rdbSession)

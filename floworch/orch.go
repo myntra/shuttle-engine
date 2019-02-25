@@ -85,11 +85,12 @@ func orchestrate(flowOrchRequest types.FlowOrchRequest, run *types.Run) bool {
 								if imageIndex, err := strconv.Atoi(run.Steps[index].Image); err == nil {
 									run.Steps[index].Image = imageList[imageIndex]
 								}
-								// Add extra and KV pair replacers
+								// Add image as a replacer since it is found
 								run.Steps[index].Replacers["image"] = run.Steps[index].Image
-								for _, singleKVPair := range run.KVPairsSavedOnSuccess {
-									run.Steps[index].Replacers[singleKVPair.Key] = singleKVPair.Value
-								}
+							}
+							// Add updated set of KV pairs as replacers
+							for _, singleKVPair := range run.KVPairsSavedOnSuccess {
+								run.Steps[index].Replacers[singleKVPair.Key] = singleKVPair.Value
 							}
 							_, err := helpers.Post("http://localhost:5600/executeworkload", run.Steps[index], nil)
 							if err != nil {
