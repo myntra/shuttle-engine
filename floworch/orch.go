@@ -23,7 +23,7 @@ func orchestrate(flowOrchRequest types.FlowOrchRequest, run *types.Run) bool {
 	completedSteps := map[int]bool{}
 	interval := 5
 	tick := time.Tick(time.Duration(interval) * time.Second)
-	timeout := time.Tick(20 * time.Minute)
+	timeout := time.Tick(1 * time.Hour)
 	isEnd := false
 	second := 0
 	hasWorkloadFailed := false
