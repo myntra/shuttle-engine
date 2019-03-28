@@ -25,6 +25,7 @@ type WorkloadResult struct {
 	UniqueKey string `json:"uniqueKey"`
 	Result    string `json:"result"`
 	Details   string `json:"details"`
+	Kind      string `json:"kind"`
 }
 
 // FlowOrchRequest ...
