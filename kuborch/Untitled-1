@@ -1,0 +1,21 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{.uniqueKey}}
+  labels:
+    name: {{.uniqueKey}}
+spec:
+  template:
+    spec:
+      dnsPolicy: Default
+      containers:
+      - name: start
+        imagePullPolicy: Always
+        image: {{.registryURL}}/api-exec
+        env:
+        - name: CUSTOM_PROPERTIES
+          value: '{"body":{"content":"Stage Execution Begun - {{.stage}}","id":{{.prID}},"repo":"{{.repo}}","stage":"{{.stage}}","runID":"{{.id}}"},"callback":false,"headers":[{"name":"Content-Type","value":"application/json"}],"httpMethod":"POST","url":"http://bcube.myntra.com/addcomment"}'
+        - name: CB_KEY
+          value: {{.repo}}-{{.prID}}-{{.srcTopCommit}}-{{.stage}}-start
+      restartPolicy: Never
+  backoffLimit: 4

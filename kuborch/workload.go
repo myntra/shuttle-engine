@@ -1,8 +1,10 @@
 package main
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -16,9 +18,11 @@ import (
 
 	r "gopkg.in/gorethink/gorethink.v4"
 
-	batchv1 "k8s.io/api/batch/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/watch"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/yaml"
 )
 
 func executeWorkload(w http.ResponseWriter, req *http.Request) {
@@ -43,7 +47,9 @@ func executeWorkload(w http.ResponseWriter, req *http.Request) {
 	workloadPath := "./yaml/" + step.UniqueKey + ".yaml"
 	fileContentInBytes := replaceVariables(yamlFromDB, step, workloadPath)
 	helpers.PanicOnErrorAPI(err, w)
+	log.Println("**********************************")
 	err = ioutil.WriteFile(workloadPath, fileContentInBytes, 0777)
+	log.Println("----------------------------------")
 	helpers.PanicOnErrorAPI(err, w)
 	go runKubeCTL(step.UniqueKey, workloadPath)
 	eRes := helpers.Response{
@@ -74,8 +80,10 @@ func runKubeCTL(uniqueKey, workloadPath string) {
 	resChan := make(chan types.WorkloadResult)
 	go func(uniqueKey string) {
 		for {
+			log.Println("Waiting on result channel for " + uniqueKey)
 			select {
 			case wr := <-resChan:
+				log.Println("Sending floworch result for " + uniqueKey)
 				_, err := helpers.Post("http://localhost:5500/callback", wr, nil)
 				if err != nil {
 					log.Println(err)
@@ -100,66 +108,97 @@ func runKubeCTL(uniqueKey, workloadPath string) {
 	log.Println("yaml executed")
 	// Poll Kube API for result of workload
 	log.Println("job-name=" + uniqueKey)
-	listOpts := metav1.ListOptions{
-		LabelSelector: "job-name=" + uniqueKey,
-	}
+	// listOpts := metav1.ListOptions{
+	// 	LabelSelector: "job-name=" + uniqueKey,
+	// }
 	log.Println("listopts done")
 	time.Sleep(time.Duration(2 * time.Second))
-	watcherI, err := Clientset.BatchV1().Jobs("default").Watch(listOpts)
+
+	k8File, err := os.Open(workloadPath)
 	if err != nil {
-		resChan <- types.WorkloadResult{
-			UniqueKey: uniqueKey,
-			Result:    types.FAILED,
-			Details:   err.Error(),
-		}
-		return
+		log.Fatal(err)
 	}
-	log.Println("Created watcherI")
-	ch := watcherI.ResultChan()
-	defer watcherI.Stop()
+	reader := bufio.NewReader(k8File)
+	decoder := yaml.NewYAMLOrJSONDecoder(reader, 2048)
+	workloadTrackMap := make(map[string]int)
+
+	watchChannel := make(chan types.WorkloadResult)
+	defer close(watchChannel)
+	for {
+		ext := runtime.RawExtension{}
+		if err := decoder.Decode(&ext); err != nil {
+			if err == io.EOF {
+				break
+			}
+			log.Fatal(err)
+		}
+
+		log.Println("-----------------------------")
+		log.Println("raw: ", string(ext.Raw))
+
+		versions := &runtime.VersionedObjects{}
+		obj, gvk, err := unstructured.UnstructuredJSONScheme.Decode(ext.Raw, nil, versions)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		// GroupKind type
+		workloadKind := gvk.GroupKind().Kind
+		// non existent value is default which is 0
+		workloadTrackMap[workloadKind]++
+
+		objectKindI := obj.GetObjectKind()
+		structuredObj := objectKindI.(*unstructured.Unstructured)
+		labelSet := structuredObj.GetLabels()
+
+		listOpts := metav1.ListOptions{
+			LabelSelector: labels.Set(labelSet).String(),
+		}
+
+		log.Println(workloadKind)
+		switch workloadKind {
+		case "Job":
+			go JobWatch(Clientset, watchChannel, "default", listOpts)
+		case "StatefulSet":
+			go StatefulSetWatch(Clientset, watchChannel, "default", listOpts)
+		case "Service":
+			go ServiceWatch(Clientset, watchChannel, "default", listOpts)
+		default:
+			log.Println("Unknown workload. Completed")
+		}
+	}
+
+	totalWorkload := len(workloadTrackMap)
+	receivedResults := 0
+
+	/**
+	 * result check receieved from go routines
+	 */
 	for {
 		select {
-		case event := <-ch:
-			job, isPresent := event.Object.(*batchv1.Job)
-			if !isPresent {
-				log.Println("Unknown Object Type")
-				resChan <- types.WorkloadResult{
-					UniqueKey: uniqueKey,
-					Result:    types.FAILED,
-					Details:   "Unknown Object Type",
-				}
+		case event := <-watchChannel:
+			log.Println("++++++++++++++++++++++++++Recieved Watch Event++++++++++++++++++++++++++++++")
+			log.Println(event)
+			receivedResults += 1
+			if event.Result == types.FAILED {
+				fmt.Println(event.Details)
 				return
 			}
-			log.Printf("Job: %s -> Active: %d, Succeeded: %d, Failed: %d",
-				job.Name, job.Status.Active, job.Status.Succeeded, job.Status.Failed)
-			switch event.Type {
-			case watch.Modified:
-				sendResponse := false
-				log.Println("New modification poll")
-				res := types.FAILED
-				errMsg := "Job Failed on K8s"
-				if job.Status.Failed > 0 {
-					log.Println("Workload Failed")
-					sendResponse = true
-				}
-				if job.Status.Active == 0 {
-					if job.Status.Succeeded == 1 {
-						res = types.SUCCEEDED
-						errMsg = ""
-					}
-					log.Println("Workload Succeeded")
-					sendResponse = true
-				}
-				if sendResponse {
-					log.Println("Stopping Poll")
-					resChan <- types.WorkloadResult{
-						UniqueKey: uniqueKey,
-						Result:    res,
-						Details:   errMsg,
-					}
-					return
-				}
+			if workloadTrackMap[event.Kind] == 1 {
+				delete(workloadTrackMap, event.Kind)
+			} else {
+				workloadTrackMap[event.Kind] -= 1
 			}
+
+			if receivedResults == totalWorkload && len(workloadTrackMap) == 0 {
+				log.Println("Succesfully completed workload", uniqueKey)
+				// hack for unique key specific stuff of floworch
+				event.UniqueKey = uniqueKey
+				resChan <- event
+				return
+			}
+
 		}
 	}
+
 }
