@@ -194,7 +194,6 @@ func runKubeCTL(uniqueKey, workloadPath string) {
 				resChan <- event
 				return
 			}
-
 		}
 	}
 
