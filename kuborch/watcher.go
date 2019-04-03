@@ -49,7 +49,7 @@ func StatefulSetWatch(clientset *kubernetes.Clientset, resultChan chan types.Wor
 					return
 				}
 			}
-		case <-time.After(10 * time.Second):
+		case <-time.After(15 * time.Second):
 			resultChan <- types.WorkloadResult{
 				Result:  types.FAILED,
 				Details: "Timed out while waiting for events with StatefulSet",
@@ -150,6 +150,50 @@ func JobWatch(clientset *kubernetes.Clientset, resultChan chan types.WorkloadRes
 				Result:  types.FAILED,
 				Details: "timeout",
 				Kind:    "Job",
+			}
+		}
+	}
+}
+
+// DeploymentWatch ...
+func DeploymentWatch(clientset *kubernetes.Clientset, resultChan chan types.WorkloadResult, namespace string, listOpts metav1.ListOptions) {
+
+	watcher, err := clientset.AppsV1().Deployments(namespace).Watch(listOpts)
+	if err != nil {
+		fmt.Println("Failure in creating the watcher")
+		fmt.Println(err)
+	}
+
+	ch := watcher.ResultChan()
+	defer watcher.Stop()
+	for {
+		select {
+		case event := <-ch:
+			if event.Type == watch.Deleted {
+				resultChan <- types.WorkloadResult{
+					Result:  types.SUCCEEDED,
+					Details: "",
+					Kind:    "Deployment",
+				}
+				return
+			} else if event.Type == watch.Modified {
+				dpl := event.Object.(*appsv1.Deployment)
+				log.Printf("*dpl.Spec.Replicas=%d, dpl.Status=%+v", *dpl.Spec.Replicas, dpl.Status)
+				if *dpl.Spec.Replicas == dpl.Status.Replicas &&
+					dpl.Status.Replicas == dpl.Status.ReadyReplicas {
+					resultChan <- types.WorkloadResult{
+						Result:  types.SUCCEEDED,
+						Details: "",
+						Kind:    "Deployment",
+					}
+					return
+				}
+			}
+		case <-time.After(15 * time.Second):
+			resultChan <- types.WorkloadResult{
+				Result:  types.FAILED,
+				Details: "Timed out while waiting for events with Deployment",
+				Kind:    "Deployment",
 			}
 		}
 	}

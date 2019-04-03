@@ -160,6 +160,8 @@ func runKubeCTL(uniqueKey, workloadPath string) {
 			go StatefulSetWatch(Clientset, watchChannel, "default", listOpts)
 		case "Service":
 			go ServiceWatch(Clientset, watchChannel, "default", listOpts)
+		case "Deployment":
+			go DeploymentWatch(Clientset, watchChannel, "default", listOpts)
 		default:
 			log.Println("Unknown workload. Completed")
 		}
