@@ -40,6 +40,8 @@ func StatefulSetWatch(clientset *kubernetes.Clientset, resultChan chan types.Wor
 				log.Printf("*sfs.Spec.Replicas=%d, sfs.Status=%+v", *sfs.Spec.Replicas, sfs.Status)
 				if *sfs.Spec.Replicas == sfs.Status.Replicas &&
 					sfs.Status.Replicas == sfs.Status.ReadyReplicas &&
+					sfs.Status.Replicas == sfs.Status.UpdatedReplicas &&
+					sfs.Status.CurrentReplicas == sfs.Status.UpdatedReplicas &&
 					sfs.Status.CurrentRevision == sfs.Status.UpdateRevision {
 					resultChan <- types.WorkloadResult{
 						Result:  types.SUCCEEDED,
