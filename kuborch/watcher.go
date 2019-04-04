@@ -179,8 +179,10 @@ func DeploymentWatch(clientset *kubernetes.Clientset, resultChan chan types.Work
 			} else if event.Type == watch.Modified {
 				dpl := event.Object.(*appsv1.Deployment)
 				log.Printf("*dpl.Spec.Replicas=%d, dpl.Status=%+v", *dpl.Spec.Replicas, dpl.Status)
-				if *dpl.Spec.Replicas == dpl.Status.Replicas &&
-					dpl.Status.Replicas == dpl.Status.ReadyReplicas {
+				if dpl.Status.UpdatedReplicas == *(dpl.Spec.Replicas) &&
+					dpl.Status.Replicas == *(dpl.Spec.Replicas) &&
+					dpl.Status.AvailableReplicas == *(dpl.Spec.Replicas) &&
+					dpl.Status.ObservedGeneration >= dpl.Generation {
 					resultChan <- types.WorkloadResult{
 						Result:  types.SUCCEEDED,
 						Details: "",
