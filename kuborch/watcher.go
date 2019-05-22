@@ -144,7 +144,7 @@ func JobWatch(clientset *kubernetes.Clientset, resultChan chan types.WorkloadRes
 					return
 				}
 			}
-		case <-time.After(30 * time.Minute):
+		case <-time.After(45 * time.Minute):
 			log.Println("Timeout for Job !!")
 			log.Println("Stopping Poll")
 			resultChan <- types.WorkloadResult{
@@ -153,6 +153,7 @@ func JobWatch(clientset *kubernetes.Clientset, resultChan chan types.WorkloadRes
 				Details: "timeout",
 				Kind:    "Job",
 			}
+			return
 		}
 	}
 }
