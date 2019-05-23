@@ -108,6 +108,12 @@ func JobWatch(clientset *kubernetes.Clientset, resultChan chan types.WorkloadRes
 	for {
 		select {
 		case event := <-ch:
+			if event.Object == nil {
+				log.Println("-- Received nil event from closed channel, refreshing channel --")
+				watcher, _ = clientset.BatchV1().Jobs(namespace).Watch(listOpts)
+				ch = watcher.ResultChan()
+				continue
+			}
 			job := event.Object.(*batchv1.Job)
 			log.Printf("Job: %s -> Active: %d, Succeeded: %d, Failed: %d, Spec Completions: %d",
 				job.Name, job.Status.Active, job.Status.Succeeded, job.Status.Failed, *job.Spec.Completions)
