@@ -200,7 +200,7 @@ func DeploymentWatch(clientset *kubernetes.Clientset, resultChan chan types.Work
 					return
 				}
 			}
-		case <-time.After(15 * time.Second):
+		case <-time.After(180 * time.Second):
 			resultChan <- types.WorkloadResult{
 				Result:  types.FAILED,
 				Details: "Timed out while waiting for events with Deployment",

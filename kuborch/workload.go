@@ -147,21 +147,28 @@ func runKubeCTL(uniqueKey, workloadPath string) {
 		objectKindI := obj.GetObjectKind()
 		structuredObj := objectKindI.(*unstructured.Unstructured)
 		labelSet := structuredObj.GetLabels()
+		namespace := structuredObj.GetNamespace()
 
 		listOpts := metav1.ListOptions{
 			LabelSelector: labels.Set(labelSet).String(),
 		}
 
 		log.Println(workloadKind)
+
+		if namespace == "" {
+			namespace = "default"
+		}
+
+		log.Println(namespace)
 		switch workloadKind {
 		case "Job":
-			go JobWatch(Clientset, watchChannel, "default", listOpts)
+			go JobWatch(Clientset, watchChannel, namespace, listOpts)
 		case "StatefulSet":
-			go StatefulSetWatch(Clientset, watchChannel, "default", listOpts)
+			go StatefulSetWatch(Clientset, watchChannel, namespace, listOpts)
 		case "Service":
-			go ServiceWatch(Clientset, watchChannel, "default", listOpts)
+			go ServiceWatch(Clientset, watchChannel, namespace, listOpts)
 		case "Deployment":
-			go DeploymentWatch(Clientset, watchChannel, "default", listOpts)
+			go DeploymentWatch(Clientset, watchChannel, namespace, listOpts)
 		default:
 			log.Println("Unknown workload. Completed")
 		}
