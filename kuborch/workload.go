@@ -188,6 +188,8 @@ func runKubeCTL(uniqueKey, workloadPath string) {
 			receivedResults += 1
 			if event.Result == types.FAILED {
 				fmt.Println(event.Details)
+				event.UniqueKey = uniqueKey
+				resChan <- event
 				return
 			}
 			if workloadTrackMap[event.Kind] == 1 {
