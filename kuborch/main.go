@@ -30,5 +30,6 @@ func main() {
 	log.Printf("Starting up the server at %d", port)
 	router := mux.NewRouter()
 	router.HandleFunc("/executeworkload", executeWorkload).Methods("Post")
+	router.HandleFunc("/health", HealthCheckHandler).Methods("Get")
 	log.Fatal(http.ListenAndServe(":"+strconv.Itoa(port), router))
 }
