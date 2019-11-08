@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"strconv"
@@ -10,7 +11,17 @@ import (
 	"github.com/myntra/shuttle-engine/types"
 )
 
+// ResultSend ...
+type ResultSend struct {
+	stepName      string
+	status        string
+	isNonCritical bool
+}
+
 func orchestrate(flowOrchRequest types.FlowOrchRequest, run *types.Run) bool {
+	var pipelinePassed bool
+	pipelinePassed = true
+	finalStatus := []*ResultSend{}
 	logFile, err := os.OpenFile(flowOrchRequest.ID, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
 		log.Printf("Unable to create a log file for the request.: %v", err)
@@ -100,6 +111,12 @@ func orchestrate(flowOrchRequest types.FlowOrchRequest, run *types.Run) bool {
 							for _, singleKVPair := range run.KVPairsSavedOnSuccess {
 								run.Steps[index].Replacers[singleKVPair.Key] = singleKVPair.Value
 							}
+							if hasWorkloadFailed == true {
+								var addToStopMeta types.Meta
+								addToStopMeta.Name = "hasWorkloadFailed"
+								addToStopMeta.Value = true
+								run.Steps[index].Meta = append(run.Steps[index].Meta, addToStopMeta)
+							}
 							_, err := helpers.Post("http://localhost:5600/executeworkload", run.Steps[index], nil)
 							if err != nil {
 								logger.Printf("thread - %s - Workload API has failed. Stopping in 5 seconds", run.Steps[index].Name)
@@ -158,6 +175,28 @@ func orchestrate(flowOrchRequest types.FlowOrchRequest, run *types.Run) bool {
 						logger.Printf("%s - Step requirements NOT satisfied. Skipping", run.Steps[index].Name)
 					}
 				} else {
+					if run.Steps[index].Name == "stop" && run.Steps[index].Status != types.INPROGRESS && run.Steps[index].Status != types.QUEUED {
+						for i := 0; i < len(run.Steps); i++ {
+							stepStatus := new(ResultSend)
+							stepStatus.stepName = run.Steps[i].Name
+							stepStatus.status = run.Steps[i].Status
+							stepStatus.isNonCritical = run.Steps[i].IsNonCritical
+							finalStatus = append(finalStatus, stepStatus)
+							if pipelinePassed {
+								if run.Steps[i].Status != types.SUCCEEDED && run.Steps[i].IsNonCritical == false {
+									pipelinePassed = false
+								}
+							}
+						}
+						logger.Printf("Comes here only one time... Atleast it should come here only once...")
+						fmt.Println("Comes here only one time... Atleast it should come here only once...")
+						fmt.Println("--------------------------------------------Final Status--------------------------------------------")
+						for i := 0; i < len(finalStatus); i++ {
+							fmt.Println(*finalStatus[i])
+						}
+						fmt.Println("--------------------------------------------Final Status--------------------------------------------")
+						fmt.Printf("The Pipeline has passed = %t", pipelinePassed)
+					}
 					logger.Printf("%s - Step State is %s. Skipping", run.Steps[index].Name, run.Steps[index].Status)
 				}
 			}
