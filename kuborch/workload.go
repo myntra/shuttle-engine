@@ -93,7 +93,7 @@ func runKubeCTL(uniqueKey, workloadPath string) {
 		}
 	}(uniqueKey)
 	defer close(resChan)
-	cmd := exec.Command("kubectl", "--kubeconfig", *ConfigPath, "create", "-f", workloadPath)
+	cmd := exec.Command("kubectl", "--kubeconfig", *ConfigPath, "apply", "-f", workloadPath)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	err := cmd.Run()
@@ -153,13 +153,13 @@ func runKubeCTL(uniqueKey, workloadPath string) {
 			LabelSelector: labels.Set(labelSet).String(),
 		}
 
-		log.Println(workloadKind)
+		log.Println("Workload Kind : ", workloadKind)
 
 		if namespace == "" {
 			namespace = "default"
 		}
 
-		log.Println(namespace)
+		log.Println("Namespace : ", namespace)
 		switch workloadKind {
 		case "Job":
 			go JobWatch(Clientset, watchChannel, namespace, listOpts)
@@ -176,6 +176,7 @@ func runKubeCTL(uniqueKey, workloadPath string) {
 
 	totalWorkload := len(workloadTrackMap)
 	receivedResults := 0
+	log.Println("Starting wait Loop ... ")
 
 	/**
 	 * result check receieved from go routines
@@ -185,7 +186,7 @@ func runKubeCTL(uniqueKey, workloadPath string) {
 		case event := <-watchChannel:
 			log.Println("++++++++++++++++++++++++++Recieved Watch Event++++++++++++++++++++++++++++++")
 			log.Println(event)
-			receivedResults += 1
+			receivedResults++
 			if event.Result == types.FAILED {
 				fmt.Println(event.Details)
 				event.UniqueKey = uniqueKey
@@ -195,7 +196,7 @@ func runKubeCTL(uniqueKey, workloadPath string) {
 			if workloadTrackMap[event.Kind] == 1 {
 				delete(workloadTrackMap, event.Kind)
 			} else {
-				workloadTrackMap[event.Kind] -= 1
+				workloadTrackMap[event.Kind]--
 			}
 
 			if receivedResults == totalWorkload && len(workloadTrackMap) == 0 {
