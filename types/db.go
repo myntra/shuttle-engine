@@ -35,6 +35,7 @@ type Step struct {
 	UniqueKey             string                  `yaml:"uniqueKey" gorethink:"uniqueKey"`
 	Replacers             map[string]string       `yaml:"replacers" gorethink:"replacers"`
 	IgnoreErrors          bool                    `yaml:"ignoreErrors" gorethink:"ignoreErrors"`
+	IsNonCritical         bool                    `yaml:"isNonCritical" gorethink:"isNonCritical"`
 	KVPairsSavedOnSuccess []KVPairsSavedOnSuccess `yaml:"kvPairsSavedOnSuccess" gorethink:"kvPairsSavedOnSuccess"`
 }
 

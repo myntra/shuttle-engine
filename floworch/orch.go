@@ -107,6 +107,8 @@ func orchestrate(flowOrchRequest types.FlowOrchRequest, run *types.Run) bool {
 								run.Steps[index].K8SCluster = flowOrchRequest.K8SCluster
 							}
 
+							// sending hasWorkloadFailed as an ENV variable
+							run.Steps[index].Replacers["hasWorkloadFailed"] = strconv.FormatBool(hasWorkloadFailed)
 							_, err := helpers.Post("http://localhost:5600/executeworkload", run.Steps[index], nil)
 							if err != nil {
 								logger.Printf("thread - %s - Workload API has failed. Stopping in 5 seconds", run.Steps[index].Name)
@@ -134,8 +136,12 @@ func orchestrate(flowOrchRequest types.FlowOrchRequest, run *types.Run) bool {
 										logger.Printf("thread - %s - Got a channel req - %v", run.Steps[index].Name, statusInChannel)
 										completedSteps[run.Steps[index].ID] = true
 										if statusInChannel.Result != types.SUCCEEDED {
-											hasWorkloadFailed = true
-											logger.Printf("thread - %s - Workload has failed. Stopping in 5 seconds", run.Steps[index].Name)
+											if run.Steps[index].IsNonCritical {
+												logger.Printf("thread - %s - Workload has failed. But not critical to pipeline, Continuing ...", run.Steps[index].Name)
+											} else {
+												hasWorkloadFailed = true
+												logger.Printf("thread - %s - Workload has failed. Stopping in 5 seconds", run.Steps[index].Name)
+											}
 										}
 										run.Steps[index].Status = statusInChannel.Result
 										logger.Printf("thread - %s - Sleeping Done", run.Steps[index].Name)
