@@ -37,7 +37,7 @@ type Step struct {
 	IgnoreErrors          bool                    `yaml:"ignoreErrors" gorethink:"ignoreErrors"`
 	IsNonCritical         bool                    `yaml:"isNonCritical" gorethink:"isNonCritical"`
 	KVPairsSavedOnSuccess []KVPairsSavedOnSuccess `yaml:"kvPairsSavedOnSuccess" gorethink:"kvPairsSavedOnSuccess"`
-	Messages              []string                `yaml:"messages" gorethink:"mesages"` // Extra information added from runnung step by calling external api
+	Messages              []string                `yaml:"messages" gorethink:"messages"` // Extra information added from runnung step by calling external api
 }
 
 // KVPairsSavedOnSuccess ...
