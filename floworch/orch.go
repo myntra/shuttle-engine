@@ -100,6 +100,13 @@ func orchestrate(flowOrchRequest types.FlowOrchRequest, run *types.Run) bool {
 							for _, singleKVPair := range run.KVPairsSavedOnSuccess {
 								run.Steps[index].Replacers[singleKVPair.Key] = singleKVPair.Value
 							}
+
+							if flowOrchRequest.K8SCluster == "" {
+								run.Steps[index].K8SCluster = "default"
+							} else {
+								run.Steps[index].K8SCluster = flowOrchRequest.K8SCluster
+							}
+
 							_, err := helpers.Post("http://localhost:5600/executeworkload", run.Steps[index], nil)
 							if err != nil {
 								logger.Printf("thread - %s - Workload API has failed. Stopping in 5 seconds", run.Steps[index].Name)

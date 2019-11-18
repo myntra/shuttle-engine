@@ -51,7 +51,8 @@ func executeWorkload(w http.ResponseWriter, req *http.Request) {
 	err = ioutil.WriteFile(workloadPath, fileContentInBytes, 0777)
 
 	helpers.PanicOnErrorAPI(err, w)
-	go runKubeCTL(step.UniqueKey, workloadPath)
+
+	go runKubeCTL(step.K8SCluster, step.UniqueKey, workloadPath)
 	eRes := helpers.Response{
 		State: "Workload triggered",
 		Code:  200,
@@ -76,7 +77,7 @@ func replaceVariables(yamlFromDB types.YAMLFromDB, step types.Step, workloadPath
 	return []byte(yamlFromDB.Config)
 }
 
-func runKubeCTL(uniqueKey, workloadPath string) {
+func runKubeCTL(k8scluster, uniqueKey, workloadPath string) {
 	resChan := make(chan types.WorkloadResult)
 	go func(uniqueKey string) {
 		for {
@@ -93,7 +94,8 @@ func runKubeCTL(uniqueKey, workloadPath string) {
 		}
 	}(uniqueKey)
 	defer close(resChan)
-	cmd := exec.Command("kubectl", "--kubeconfig", *ConfigPath, "apply", "-f", workloadPath)
+
+	cmd := exec.Command("kubectl", "--kubeconfig", ClientConfigMap[k8scluster].ConfigPath, "apply", "-f", workloadPath)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	err := cmd.Run()
@@ -162,13 +164,13 @@ func runKubeCTL(uniqueKey, workloadPath string) {
 		log.Println("Namespace : ", namespace)
 		switch workloadKind {
 		case "Job":
-			go JobWatch(Clientset, watchChannel, namespace, listOpts)
+			go JobWatch(ClientConfigMap[k8scluster].Clientset, watchChannel, namespace, listOpts)
 		case "StatefulSet":
-			go StatefulSetWatch(Clientset, watchChannel, namespace, listOpts)
+			go StatefulSetWatch(ClientConfigMap[k8scluster].Clientset, watchChannel, namespace, listOpts)
 		case "Service":
-			go ServiceWatch(Clientset, watchChannel, namespace, listOpts)
+			go ServiceWatch(ClientConfigMap[k8scluster].Clientset, watchChannel, namespace, listOpts)
 		case "Deployment":
-			go DeploymentWatch(Clientset, watchChannel, namespace, listOpts)
+			go DeploymentWatch(ClientConfigMap[k8scluster].Clientset, watchChannel, namespace, listOpts)
 		default:
 			log.Println("Unknown workload. Completed")
 		}
