@@ -27,6 +27,7 @@ type Step struct {
 	Name                  string                  `yaml:"name" gorethink:"name"`
 	StepTemplate          string                  `yaml:"stepTemplate" gorethink:"stepTemplate"`
 	Image                 string                  `yaml:"image" gorethink:"image"`
+	K8SCluster            string                  `yaml:"k8scluster" gorethink:"k8sclustername"`
 	Meta                  []Meta                  `yaml:"meta" gorethink:"meta"`
 	Requires              []int                   `yaml:"requires" gorethink:"requires"`
 	CommitContainer       bool                    `yaml:"commitContainer" gorethink:"commitContainer"`
