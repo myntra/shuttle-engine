@@ -49,3 +49,32 @@ func updateRunDetailsToDB(run *types.Run) (*types.Run, error) {
 	}
 	return run, nil
 }
+
+// CopyAttributes ...
+// Copies attributes from previosuly saved value
+// - Messages
+func CopyAttributes(run *types.Run) error {
+	rdbSession, err := gorethink.Connect(gorethink.ConnectOpts{
+		Address:  "dockinsrethink.myntra.com:28015",
+		Database: "shuttleservices",
+	})
+	if err != nil {
+		return err
+	}
+	defer rdbSession.Close()
+
+	cursor, err := gorethink.Table(run.Stage + "_runs").
+		Filter(map[string]interface{}{
+			"id": run.ID,
+		}).
+		Run(rdbSession)
+
+	var savedRun *types.Run
+	err = cursor.One(&savedRun)
+
+	for indx, val := range savedRun.Steps {
+		run.Steps[indx].Messages = val.Messages
+	}
+
+	return nil
+}

@@ -158,6 +158,7 @@ func orchestrate(flowOrchRequest types.FlowOrchRequest, run *types.Run) bool {
 								}
 							}(index)
 							run.Steps[index].Status = types.INPROGRESS
+							CopyAttributes(run)
 							updateRunDetailsToDB(run)
 							logger.Printf("%s - Triggered Step", run.Steps[index].Name)
 						} else {
