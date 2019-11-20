@@ -36,7 +36,6 @@ func TimeTracker(start time.Time, requestType string, uniqueID string, stage str
 		pullRequestNumber = s[l-4]
 		serviceName = map[bool]string{true: s[0], false: s[0] + "-" + s[1]}[l-5 == 0]
 	}
-	// log.Printf("****" + config.GetConfig().Metrics)
 
 	if os.Getenv("METRICS") == "ON" {
 		data := `m_bizmetrics,app_name=floworch,request_type=` + requestType + `,service_name=` + serviceName + `,unique_id=` + uniqueID + `,pr_number=` + pullRequestNumber + `,commit_id=` + commitID + `,run_number=` + runNumber + `,step_number=` + stepNumber + `,stage=` + stage + ` duration=` + strconv.Itoa(int(elapsed))
@@ -73,7 +72,7 @@ func pushBusinessMetrics(pushData string) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != 204 {
-		log.Printf("response Status:", resp.StatusCode)
+		log.Printf("response Status:%d", resp.StatusCode)
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
