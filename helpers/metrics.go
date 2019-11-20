@@ -7,44 +7,21 @@ import (
 	"net/http"
 	"os"
 	"strconv"
-	"strings"
 	"time"
 )
 
 // TimeTracker : calculates the time taken by each step in any run(ci/crf)
-func TimeTracker(start time.Time, requestType string, uniqueID string, stage string) {
-	var serviceName string
-	var pullRequestNumber string
-	var commitID string
-	var stepNumber string
-	var runNumber string
-
+func TimeTracker(start time.Time, stage string, id string, stepTemplate string, uniqueKey string, stageFilter string) {
 	elapsed := time.Since(start).Milliseconds()
 
-	if requestType == "crf" || requestType == "cf" {
-		s := strings.Split(uniqueID, "-")
-		l := len(s)
-
-		/*
-			Here we are slicing the uniqueID in reverse as the service name can or cannot contain hyphen in it
-			this will handle both unique IDs "service-name-PR#-commitID-runId-stepNumber" or "servicename-PR#-commitID-runId-stepNumber"
-		*/
-		stepNumber = s[l-1]
-		runNumber = s[l-2]
-		commitID = s[l-3]
-		pullRequestNumber = s[l-4]
-		serviceName = map[bool]string{true: s[0], false: s[0] + "-" + s[1]}[l-5 == 0]
-	}
+	data := `m_bizmetrics,app_name=floworch,stage=` + stage + `,step_id=` + id + `,step_template=` + stepTemplate + `,unique_key=` + uniqueKey + `,stage_filter=` + stageFilter + ` duration=` + strconv.Itoa(int(elapsed))
 
 	if os.Getenv("METRICS") == "ON" {
-		data := `m_bizmetrics,app_name=floworch,request_type=` + requestType + `,service_name=` + serviceName + `,unique_id=` + uniqueID + `,pr_number=` + pullRequestNumber + `,commit_id=` + commitID + `,run_number=` + runNumber + `,step_number=` + stepNumber + `,stage=` + stage + ` duration=` + strconv.Itoa(int(elapsed))
-		log.Printf("function:: %s, took:: %dms", uniqueID, elapsed)
+		log.Printf("StageFilter:: %s, Step:: %s took:: %dms", stageFilter, stepTemplate, elapsed)
 		pushBusinessMetrics(data)
-
 	} else {
 		log.Printf("metrics is disabled")
 	}
-
 }
 
 func pushBusinessMetrics(pushData string) {
