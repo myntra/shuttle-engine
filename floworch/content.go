@@ -1,6 +1,8 @@
 package main
 
 import (
+	"log"
+
 	"github.com/myntra/shuttle-engine/types"
 	gorethink "gopkg.in/gorethink/gorethink.v4"
 )
@@ -38,6 +40,7 @@ func updateRunDetailsToDB(run *types.Run) (*types.Run, error) {
 		return run, err
 	}
 	defer rdbSession.Close()
+	CopyAttributes(run)
 	_, err = gorethink.Table(run.Stage+"_runs").Insert(run, gorethink.InsertOpts{
 		Conflict: "update",
 	}).RunWrite(rdbSession)
@@ -69,12 +72,19 @@ func CopyAttributes(run *types.Run) error {
 		}).
 		Run(rdbSession)
 
-	var savedRun *types.Run
+	if cursor.IsNil() {
+		return nil
+	}
+
+	var savedRun types.Run
 	err = cursor.One(&savedRun)
 
 	for indx, val := range savedRun.Steps {
 		run.Steps[indx].Messages = val.Messages
 	}
 
+	if err != nil {
+		log.Println(err)
+	}
 	return nil
 }
