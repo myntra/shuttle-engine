@@ -2,7 +2,6 @@ package helpers
 
 import (
 	"bytes"
-	// "github.com/myntra/shuttle-engine/config"
 	"io/ioutil"
 	"log"
 	"net/http"
