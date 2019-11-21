@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-// TimeTracker : calculates the time taken by each step in any run(ci/crf)
+// TimeTracker : calculates the time taken by each step in any run
 func TimeTracker(start time.Time, stage string, id string, stepTemplate string, uniqueKey string, stageFilter string) {
 	elapsed := time.Since(start).Milliseconds()
 
