@@ -13,13 +13,13 @@ import (
 // MapOfDeleteChannelDetails ...
 var MapOfDeleteChannelDetails = make(map[string]types.DeleteChannelDetails)
 
-// Metrics will have the value of an environment variable("METRICS") which enables the metrics if its value is "ON"
-var Metrics string
+// EnableMetrics will have the value of an environment variable("ENABLE_METRICS") which enables the metrics if its value is "ON"
+var EnableMetrics, _ = strconv.ParseBool(os.Getenv("ENABLE_METRICS"))
 
 func main() {
 	router := mux.NewRouter()
-	Metrics = os.Getenv("METRICS")
-	if Metrics == "ON" {
+
+	if EnableMetrics {
 		HealthCheckTelegraf()
 	}
 
