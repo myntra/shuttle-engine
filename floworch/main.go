@@ -10,15 +10,23 @@ import (
 	"github.com/myntra/shuttle-engine/types"
 )
 
-// MapOfDeleteChannelDetails ...
-var MapOfDeleteChannelDetails = make(map[string]types.DeleteChannelDetails)
+var (
+	// MapOfDeleteChannelDetails ...
+	MapOfDeleteChannelDetails = make(map[string]types.DeleteChannelDetails)
 
-// EnableMetrics will have the value of an environment variable("ENABLE_METRICS") which enables the metrics if its value is "ON"
-var EnableMetrics, _ = strconv.ParseBool(os.Getenv("ENABLE_METRICS"))
+	// EnableMetrics will have the value of an environment variable("ENABLE_METRICS") which enables the metrics if its value is "ON"
+	EnableMetrics bool
+	err           error
+)
 
 func main() {
 	router := mux.NewRouter()
 
+	EnableMetrics, err = strconv.ParseBool(os.Getenv("ENABLE_METRICS"))
+	if err != nil {
+		log.Println(err)
+		EnableMetrics = false
+	}
 	if EnableMetrics {
 		HealthCheckTelegraf()
 	}
