@@ -5,16 +5,12 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
-	"os"
 	"strconv"
 	"time"
 )
 
-// metrics will have the value of an environment variable("METRICS") which enables the metrics if its value is "ON"
-var metrics = os.Getenv("METRICS")
-
 // TimeTracker : calculates the time taken by each step in any run
-func TimeTracker(start time.Time, stage string, id string, stepTemplate string, uniqueKey string, stageFilter string) {
+func TimeTracker(start time.Time, metrics string, stage string, id string, stepTemplate string, uniqueKey string, stageFilter string) {
 
 	if metrics == "ON" {
 		elapsed := time.Since(start).Milliseconds()
