@@ -44,8 +44,6 @@ func main() {
 	//Example for Running with configPath is ./kuborch -configPath=clustername:~/kube/config -configPath=clustername1:~/kube/config1
 	flag.Var(&myConfigList, "configPath", "Please provide the Config Map as -configPath=<name>:<configPath>")
 	flag.Parse()
-	// ConfigPath = flag.String("configPath", "/Users/300007572/.kube/config", "Path to kube config")
-	// flag.Parse()
 	ClientConfigMap = make(map[string]ClientConfig)
 	if len(myConfigList) == 0 {
 		//if No configPath is provided then Below is the default Kube config Path

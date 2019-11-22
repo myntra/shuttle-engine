@@ -53,7 +53,7 @@ func executeWorkload(w http.ResponseWriter, req *http.Request) {
 	helpers.PanicOnErrorAPI(err, w)
 
 	if ClientConfigMap[step.K8SCluster].Clientset == nil {
-		helpers.PanicOnErrorAPI(fmt.Errorf("Please send k8scluster Name as kubeorch started with configPath"), w)
+		helpers.PanicOnErrorAPI(fmt.Errorf("kuborch does not have the requested cluster configured - %s", step.K8SCluster), w)
 	}
 
 	go runKubeCTL(step.K8SCluster, step.UniqueKey, workloadPath)
