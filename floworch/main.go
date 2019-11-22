@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 
 	"github.com/gorilla/mux"
@@ -14,6 +15,11 @@ var MapOfDeleteChannelDetails = make(map[string]types.DeleteChannelDetails)
 
 func main() {
 	router := mux.NewRouter()
+
+	if os.Getenv("METRICS") == "ON" {
+		HealthCheckTelegraf()
+	}
+
 	router.HandleFunc("/execute", executeHandler).Methods("Post")
 	router.HandleFunc("/callback", callbackHandler).Methods("Post")
 	router.HandleFunc("/healthcheck", HealthCheckHandler).Methods("Get")

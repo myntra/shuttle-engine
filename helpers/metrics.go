@@ -10,17 +10,23 @@ import (
 	"time"
 )
 
+// metrics will have the value of an environment variable("METRICS") which enables the metrics if its value is "ON"
+var metrics = os.Getenv("METRICS")
+
 // TimeTracker : calculates the time taken by each step in any run
 func TimeTracker(start time.Time, stage string, id string, stepTemplate string, uniqueKey string, stageFilter string) {
-	elapsed := time.Since(start).Milliseconds()
 
-	data := `m_bizmetrics,app_name=floworch,stage=` + stage + `,step_id=` + id + `,step_template=` + stepTemplate + `,unique_key=` + uniqueKey + `,stage_filter=` + stageFilter + ` duration=` + strconv.Itoa(int(elapsed))
+	if metrics == "ON" {
+		elapsed := time.Since(start).Milliseconds()
 
-	if os.Getenv("METRICS") == "ON" {
+		if len(stepTemplate) == 0 {
+			stepTemplate = "none"
+		}
+		data := `m_bizmetrics,app_name=floworch,stage=` + stage + `,step_id=` + id + `,step_template=` + stepTemplate + `,unique_key=` + uniqueKey + `,stage_filter=` + stageFilter + ` duration=` + strconv.Itoa(int(elapsed))
+
 		log.Printf("StageFilter:: %s, Step:: %s took:: %dms", stageFilter, stepTemplate, elapsed)
+
 		pushBusinessMetrics(data)
-	} else {
-		log.Printf("metrics is disabled")
 	}
 }
 
@@ -31,9 +37,8 @@ func pushBusinessMetrics(pushData string) {
 
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(data))
 	if err != nil {
-		log.Fatal("Error reading request. ", err)
+		log.Println("Error reading request. ", err)
 	}
-
 	req.Header.Set("Content-Type", "text/plain")
 
 	// Set client timeout
@@ -42,19 +47,18 @@ func pushBusinessMetrics(pushData string) {
 	// Send request
 	resp, err := client.Do(req)
 	if err != nil {
-		log.Fatal("Error reading response. ", err)
+		log.Println("Error reading response. ", err)
 	}
 
 	defer resp.Body.Close()
 
 	if resp.StatusCode != 204 {
-		log.Printf("response Status:%d", resp.StatusCode)
+		log.Printf("Response Status:%d", resp.StatusCode)
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		log.Fatal("Error reading response body. ", err)
+		log.Println("Error reading response body. ", err)
+		log.Printf("%s\n", body)
 	}
-
-	log.Printf("%s\n", body)
 }
