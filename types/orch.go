@@ -34,6 +34,7 @@ type FlowOrchRequest struct {
 	StageFilter string            `json:"stageFilter"`
 	Meta        map[string]string `json:"meta"`
 	ID          string            `json:"id"`
+	K8SCluster  string            `json:"k8scluster"`
 }
 
 // DeleteChannelDetails ...
