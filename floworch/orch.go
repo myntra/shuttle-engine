@@ -11,6 +11,7 @@ import (
 )
 
 func orchestrate(flowOrchRequest types.FlowOrchRequest, run *types.Run) bool {
+	defer helpers.TimeTracker(EnableMetrics, time.Now(), flowOrchRequest.Stage, "-1", "total-time", flowOrchRequest.ID, flowOrchRequest.StageFilter)
 	logFile, err := os.OpenFile(flowOrchRequest.ID, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
 		log.Printf("Unable to create a log file for the request.: %v", err)
