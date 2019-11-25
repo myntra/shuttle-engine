@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -14,10 +15,12 @@ func TimeTracker(enableMetrics bool, start time.Time, stage string, id string, s
 	if enableMetrics {
 		elapsed := time.Since(start).Milliseconds()
 
-		if len(stepTemplate) == 0 {
-			stepTemplate = "none"
-		}
-		data := `m_bizmetrics,app_name=floworch,stage=` + stage + `,step_id=` + id + `,step_template=` + stepTemplate + `,unique_key=` + uniqueKey + `,stage_filter=` + stageFilter + ` duration=` + strconv.Itoa(int(elapsed))
+		stageFilterList := strings.Split(stageFilter, "-")
+		branch := stageFilterList[len(stageFilterList)-1]
+		serviceName := strings.Replace(stageFilter, "-"+branch, "", -1)
+
+		data := `m_bizmetrics,app_name=floworch,stage=` + stage + `,step_id=` + id + `,step_template=` + stepTemplate + `,unique_key=` + uniqueKey + `,stage_filter=` + stageFilter + `,branch=` + branch + `,service_name=` + serviceName + ` duration=` + strconv.Itoa(int(elapsed))
+
 		log.Printf("StageFilter:: %s, Step:: %s took:: %dms", stageFilter, stepTemplate, elapsed)
 		pushBusinessMetrics(data)
 	}
