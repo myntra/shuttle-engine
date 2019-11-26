@@ -6,22 +6,15 @@ import (
 	"log"
 	"net/http"
 	"strconv"
-	"strings"
 	"time"
 )
 
 // TimeTracker : calculates the time taken by each step in any run
-func TimeTracker(enableMetrics bool, start time.Time, stage string, id string, stepTemplate string, uniqueKey string, stageFilter string) {
+func TimeTracker(enableMetrics bool, start time.Time, stage string, id string, stepTemplate string, uniqueKey string, meta map[string]string) {
 	if enableMetrics {
 		elapsed := time.Since(start).Milliseconds()
-
-		stageFilterList := strings.Split(stageFilter, "-")
-		branch := stageFilterList[len(stageFilterList)-1]
-		serviceName := strings.Replace(stageFilter, "-"+branch, "", -1)
-
-		data := `m_bizmetrics,app_name=floworch,stage=` + stage + `,step_id=` + id + `,step_template=` + stepTemplate + `,unique_key=` + uniqueKey + `,stage_filter=` + stageFilter + `,branch=` + branch + `,service_name=` + serviceName + ` duration=` + strconv.Itoa(int(elapsed))
-
-		log.Printf("StageFilter:: %s, Step:: %s took:: %dms", stageFilter, stepTemplate, elapsed)
+		data := `m_bizmetrics,app_name=floworch,stage=` + stage + `,step_id=` + id + `,step_template=` + stepTemplate + `,unique_key=` + uniqueKey + `,repo=` + meta["repo"] + ` duration=` + strconv.Itoa(int(elapsed))
+		log.Printf("meta:: %s, Step:: %s took:: %dms", meta, stepTemplate, elapsed)
 		pushBusinessMetrics(data)
 	}
 }

@@ -11,7 +11,7 @@ import (
 )
 
 func orchestrate(flowOrchRequest types.FlowOrchRequest, run *types.Run) bool {
-	defer helpers.TimeTracker(EnableMetrics, time.Now(), flowOrchRequest.Stage, "-1", "total-time", flowOrchRequest.ID, flowOrchRequest.StageFilter)
+	defer helpers.TimeTracker(EnableMetrics, time.Now(), flowOrchRequest.Stage, "-1", "total-time", flowOrchRequest.ID, flowOrchRequest.Meta)
 	logFile, err := os.OpenFile(flowOrchRequest.ID, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
 		log.Printf("Unable to create a log file for the request.: %v", err)
@@ -118,7 +118,7 @@ func orchestrate(flowOrchRequest types.FlowOrchRequest, run *types.Run) bool {
 								break
 							}
 							go func(index int) {
-								defer helpers.TimeTracker(EnableMetrics, time.Now(), flowOrchRequest.Stage, strconv.Itoa(run.Steps[index].ID), run.Steps[index].StepTemplate, run.Steps[index].UniqueKey, flowOrchRequest.StageFilter)
+								defer helpers.TimeTracker(EnableMetrics, time.Now(), flowOrchRequest.Stage, strconv.Itoa(run.Steps[index].ID), run.Steps[index].StepTemplate, run.Steps[index].UniqueKey, flowOrchRequest.Meta)
 
 								deleteChannelDetails := types.DeleteChannelDetails{
 									ID:            flowOrchRequest.ID,
