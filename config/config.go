@@ -6,15 +6,11 @@ import (
 	"log"
 )
 
-// ConfigYamlFolder ...
-var ConfigYamlFolder = "../"
-
-// ConfigYaml ...
-var ConfigYaml = "config.yaml"
-
 // Config ...
 type Config struct {
-	Filter Filters `yaml:"filters"`
+	Filter         Filters `yaml:"filters"`
+	TotalTimeTable string  `yaml:"totalTimeTable"`
+	StepTimeTable  string  `yaml:"stepTimeTable"`
 }
 
 // Filters ...
@@ -26,7 +22,7 @@ var config Config
 func ReadConfig() error {
 
 	config = Config{}
-	configData, err := ioutil.ReadFile(ConfigYamlFolder + ConfigYaml)
+	configData, err := ioutil.ReadFile("../config.yaml")
 
 	if err != nil {
 		log.Println(err)
