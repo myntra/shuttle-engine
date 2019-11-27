@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/myntra/shuttle-engine/config"
 	"log"
 	"net/http"
 	"os"
@@ -21,6 +22,10 @@ var (
 
 func main() {
 	router := mux.NewRouter()
+
+	if err := config.ReadConfig(); err != nil {
+		return
+	}
 
 	EnableMetrics, err = strconv.ParseBool(os.Getenv("ENABLE_METRICS"))
 	if err != nil {
