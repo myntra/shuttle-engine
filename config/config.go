@@ -1,22 +1,24 @@
 package config
 
 import (
-	"fmt"
 	yaml "gopkg.in/yaml.v1"
 	"io/ioutil"
+	"log"
 )
 
-// ConfigYamlFolder config file folder
+// ConfigYamlFolder ...
 var ConfigYamlFolder = "../"
 
-// ConfigYaml config filename
+// ConfigYaml ...
 var ConfigYaml = "config.yaml"
 
-//Config ...
+// Config ...
 type Config struct {
-	Key1 string `yaml:"key1"`
-	Key2 string `yaml:"key2"`
+	Filter Filters `yaml:"filters"`
 }
+
+// Filters ...
+type Filters map[string]string
 
 var config Config
 
@@ -25,14 +27,13 @@ func ReadConfig() error {
 
 	config = Config{}
 	configData, err := ioutil.ReadFile(ConfigYamlFolder + ConfigYaml)
+
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 		return err
 	}
-	err = yaml.Unmarshal([]byte(configData), &config)
-	if err != nil {
-		fmt.Println(err)
-		return err
+	if err := yaml.Unmarshal([]byte(configData), &config); err != nil {
+		log.Println(err)
 	}
 
 	return nil
@@ -40,6 +41,5 @@ func ReadConfig() error {
 
 // GetConfig ...
 func GetConfig() Config {
-
 	return config
 }

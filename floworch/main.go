@@ -1,13 +1,13 @@
 package main
 
 import (
-	"github.com/myntra/shuttle-engine/config"
 	"log"
 	"net/http"
 	"os"
 	"strconv"
 
 	"github.com/gorilla/mux"
+	"github.com/myntra/shuttle-engine/config"
 	"github.com/myntra/shuttle-engine/types"
 )
 
@@ -21,6 +21,7 @@ var (
 )
 
 func main() {
+
 	router := mux.NewRouter()
 
 	if err := config.ReadConfig(); err != nil {

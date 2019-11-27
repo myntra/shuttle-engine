@@ -13,17 +13,18 @@ import (
 // TimeTracker : calculates the time taken by each step in any run
 func TimeTracker(enableMetrics bool, start time.Time, stage string, id string, stepTemplate string, uniqueKey string, meta map[string]string) {
 	if enableMetrics {
-		var key string
-		elapsed := time.Since(start).Milliseconds()
+		var configData string
 
-		if len(config.GetConfig().Key1) > 0 {
-			key = meta[config.GetConfig().Key1]
-		} else if len(config.GetConfig().Key2) > 0 {
-			key = meta[config.GetConfig().Key2]
-		} else {
-			key = "none"
+		elapsed := time.Since(start).Milliseconds()
+		filters := config.GetConfig().Filter
+
+		for k, v := range filters {
+			if stage == k {
+				configData = k + "=" + meta[v] + ","
+			}
 		}
-		data := `m_bizmetrics,app_name=floworch,stage=` + stage + `,step_id=` + id + `,step_template=` + stepTemplate + `,unique_key=` + uniqueKey + `,key=` + key + ` duration=` + strconv.Itoa(int(elapsed))
+
+		data := `m_bizmetrics,app_name=floworch,stage=` + stage + `,step_id=` + id + `,step_template=` + stepTemplate + `,` + configData + `unique_key=` + uniqueKey + ` duration=` + strconv.Itoa(int(elapsed))
 		log.Printf("meta:: %s, Step:: %s took:: %dms", meta, stepTemplate, elapsed)
 		pushBusinessMetrics(data)
 	}
