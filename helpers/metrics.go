@@ -2,6 +2,7 @@ package helpers
 
 import (
 	"bytes"
+	"github.com/myntra/shuttle-engine/config"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -10,15 +11,26 @@ import (
 )
 
 // TimeTracker : calculates the time taken by each step in any run
-func TimeTracker(enableMetrics bool, start time.Time, stage string, id string, stepTemplate string, uniqueKey string, stageFilter string) {
+func TimeTracker(enableMetrics bool, start time.Time, isTotalTimeMetrics bool, stage string, id string, stepTemplate string, uniqueKey string, meta map[string]string) {
 	if enableMetrics {
-		elapsed := time.Since(start).Milliseconds()
+		var configData string
+		var data string
 
-		if len(stepTemplate) == 0 {
-			stepTemplate = "none"
+		elapsed := time.Since(start).Milliseconds()
+		filters := config.GetConfig().Filter
+
+		for k, v := range filters {
+			if stage == k {
+				configData = k + "=" + meta[v] + ","
+			}
 		}
-		data := `m_bizmetrics,app_name=floworch,stage=` + stage + `,step_id=` + id + `,step_template=` + stepTemplate + `,unique_key=` + uniqueKey + `,stage_filter=` + stageFilter + ` duration=` + strconv.Itoa(int(elapsed))
-		log.Printf("StageFilter:: %s, Step:: %s took:: %dms", stageFilter, stepTemplate, elapsed)
+		if isTotalTimeMetrics {
+			data = config.GetConfig().TotalTimeTable + `,app_name=floworch,stage=` + stage + `,` + configData + `unique_key=` + uniqueKey + ` duration=` + strconv.Itoa(int(elapsed))
+		} else {
+			data = config.GetConfig().StepTimeTable + `,app_name=floworch,stage=` + stage + `,step_id=` + id + `,step_template=` + stepTemplate + `,` + configData + `unique_key=` + uniqueKey + ` duration=` + strconv.Itoa(int(elapsed))
+		}
+
+		log.Printf("meta:: %s, Step:: %s took:: %dms", meta, stepTemplate, elapsed)
 		pushBusinessMetrics(data)
 	}
 }

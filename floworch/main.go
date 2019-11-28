@@ -7,6 +7,7 @@ import (
 	"strconv"
 
 	"github.com/gorilla/mux"
+	"github.com/myntra/shuttle-engine/config"
 	"github.com/myntra/shuttle-engine/types"
 )
 
@@ -20,7 +21,12 @@ var (
 )
 
 func main() {
+
 	router := mux.NewRouter()
+
+	if err := config.ReadConfig(); err != nil {
+		return
+	}
 
 	EnableMetrics, err = strconv.ParseBool(os.Getenv("ENABLE_METRICS"))
 	if err != nil {
