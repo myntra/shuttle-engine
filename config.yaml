@@ -1,0 +1,14 @@
+kuborchPort: 5600
+floworchPort: 5500
+buildHubURL: buildhub.company.com
+floworchURL: http://floworch.company.com
+kuborchURL: http://kuborch.company.com
+kubConfigPath: ~/.kube/config
+rethinkHost: rethinkhost.company.com:28015
+shuttleDBName: shuttleservices
+filters:
+  stage1: filter1
+  stage2: filter2
+  stage3: filter3
+totalTimeTable: influx_table_name_for_total_time
+stepTimeTable: influx_table_name_for_step_time
