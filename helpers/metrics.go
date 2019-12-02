@@ -12,7 +12,7 @@ import (
 )
 
 // TimeTracker : calculates the time taken by each step in any run
-func TimeTracker(enableMetrics bool, start time.Time, isTotalTimeMetrics bool, stage string, id string, stepTemplate string, uniqueKey string, meta map[string]string) {
+func TimeTracker(enableMetrics bool, start time.Time, isTotalTimeMetrics bool, stage string, id string, stepName string, uniqueKey string, meta map[string]string) {
 	if enableMetrics {
 		var configData string
 		var data string
@@ -28,10 +28,8 @@ func TimeTracker(enableMetrics bool, start time.Time, isTotalTimeMetrics bool, s
 		if isTotalTimeMetrics {
 			data = config.GetConfig().TotalTimeTable + `,app_name=floworch,stage=` + stage + `,` + configData + `unique_key=` + uniqueKey + ` duration=` + strconv.Itoa(int(elapsed))
 		} else {
-			data = config.GetConfig().StepTimeTable + `,app_name=floworch,stage=` + stage + `,step_id=` + id + `,step_template=` + stepTemplate + `,` + configData + `unique_key=` + uniqueKey + ` duration=` + strconv.Itoa(int(elapsed))
+			data = config.GetConfig().StepTimeTable + `,app_name=floworch,stage=` + stage + `,step_id=` + id + `,step_name=` + stepName + `,` + configData + `unique_key=` + uniqueKey + ` duration=` + strconv.Itoa(int(elapsed))
 		}
-
-		log.Printf("meta:: %s, Step:: %s took:: %dms", meta, stepTemplate, elapsed)
 		pushBusinessMetrics(data)
 	}
 }
@@ -57,6 +55,7 @@ func pushBusinessMetrics(pushData string) {
 
 	defer resp.Body.Close()
 	if resp.StatusCode != 204 {
+		log.Printf("pushData : %s", data)
 		log.Printf("Response Status:%d", resp.StatusCode)
 	}
 
