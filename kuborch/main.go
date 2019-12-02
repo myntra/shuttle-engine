@@ -13,14 +13,14 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 )
 
-// Clientset ...
-var Clientset *kubernetes.Clientset
-
-var ClientConfigMap map[string]ClientConfig
-
-// ConfigPath ...
-var ConfigPath *string
-
+var (
+	// Clientset ...
+	Clientset *kubernetes.Clientset
+	// ClientConfigMap ...
+	ClientConfigMap map[string]ClientConfig
+	// ConfigPath ...
+	ConfigPath *string
+)
 type configsList []string
 
 func (i *configsList) String() string {
@@ -45,6 +45,7 @@ func main() {
 	flag.Var(&myConfigList, "configPath", "Please provide the Config Map as -configPath=<name>:<configPath>")
 	flag.Parse()
 	ClientConfigMap = make(map[string]ClientConfig)
+	log.Println("Found configs", myConfigList)
 	if len(myConfigList) == 0 {
 		//if No configPath is provided then Below is the default Kube config Path
 		defaultConfigPath := "~/.kube/config"

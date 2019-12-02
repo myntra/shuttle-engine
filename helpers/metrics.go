@@ -2,12 +2,13 @@ package helpers
 
 import (
 	"bytes"
-	"github.com/myntra/shuttle-engine/config"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"strconv"
 	"time"
+
+	"github.com/myntra/shuttle-engine/config"
 )
 
 // TimeTracker : calculates the time taken by each step in any run

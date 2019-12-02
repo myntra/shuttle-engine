@@ -22,7 +22,7 @@ var config Config
 func ReadConfig() error {
 
 	config = Config{}
-	configData, err := ioutil.ReadFile("../config.yaml")
+	configData, err := ioutil.ReadFile("/usr/bin/config.yaml")
 
 	if err != nil {
 		log.Println(err)
