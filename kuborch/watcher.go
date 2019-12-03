@@ -208,6 +208,7 @@ func DeploymentWatch(clientset *kubernetes.Clientset, resultChan chan types.Work
 				Details: "Timed out while waiting for events with Deployment",
 				Kind:    "Deployment",
 			}
+			return
 		}
 	}
 }
