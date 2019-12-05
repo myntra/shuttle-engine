@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shuttle-engine
+  labels:
+    app: shuttle-engine
+spec:
+  minReadySeconds: 5
+  replicas: 2
+  revisionHistoryLimit: 2
+  selector:
+    matchLabels:
+      app: shuttle-engine
+  template:
+    metadata:
+      labels:
+        app: shuttle-engine
+    spec:
+      hostNetwork: true
+      terminationGracePeriodSeconds: 10
+      containers:
+        - name: floworch
+          imagePullPolicy: Always
+          image: dockerhub.company.com:5000/floworch
+          env:
+            - name: ENABLE_METRICS
+              value: 'true'
+        - name: kuborch
+          imagePullPolicy: Always
+          image: dockerhub.company.com:5000/kuborch
+          volumeMounts:
+            - mountPath: /root/.kube
+              name: kubeconfigs
+              readOnly: true
+      volumes:
+        - name: kubeconfigs
+          hostPath:
+            path: /path/to/kubeconfigs
+      nodeSelector:
+        type: sss
