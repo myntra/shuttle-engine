@@ -47,8 +47,8 @@ func orchestrate(flowOrchRequest types.FlowOrchRequest, run *types.Run) bool {
 								UniqueKey: uniqueKey,
 								Result:    "Failed",
 							}
-							defer close(singleDeleteChannelDetail.DeleteChannel)
-							defer delete(MapOfDeleteChannelDetails, uniqueKey)
+							close(singleDeleteChannelDetail.DeleteChannel)
+							delete(MapOfDeleteChannelDetails, uniqueKey)
 							// TODO : Stop jobs if they are running
 						} else {
 							logger.Printf("There are workloads which ignoreErrors. Running them")
