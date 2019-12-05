@@ -27,7 +27,7 @@ func HealthCheckHandler(w http.ResponseWriter, req *http.Request) {
 func QueueStatusHandler(w http.ResponseWriter, req *http.Request) {
 	keys := make(map[string]string)
 	for k, v := range MapOfDeleteChannelDetails {
-		keys[k] = v.ID
+		keys[k] = time.Now().Sub(v.CreationTime).String()
 	}
 
 	response := make(map[string]interface{})

@@ -1,5 +1,7 @@
 package types
 
+import "time"
+
 // WorkloadDetails ...
 type WorkloadDetails struct {
 	Stage            string `json:"stage"`
@@ -43,6 +45,7 @@ type DeleteChannelDetails struct {
 	Stage         string              `json:"stage"`
 	DeleteChannel chan WorkloadResult `json:"deleteChannel"`
 	IgnoreErrors  bool                `json:"ignoreErrors"`
+	CreationTime  time.Time           `json:"creationTime"`
 }
 
 const (

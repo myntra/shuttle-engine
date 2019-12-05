@@ -18,3 +18,4 @@ kuborch/yaml/*.yaml
 test
 floworch/debug
 kuborch/debug
+shuttle-engine-config.*.yaml

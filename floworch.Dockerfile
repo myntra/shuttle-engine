@@ -1,6 +1,6 @@
 FROM centos:6
 LABEL maintainer="myntra"
-ENV ENABLE_METRICS=true
+# ENV ENABLE_METRICS=true
 WORKDIR /usr/bin
 ADD floworch/floworch /usr/bin/floworch
 RUN chmod +x /usr/bin/floworch

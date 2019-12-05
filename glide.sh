@@ -2,7 +2,7 @@
 set -e
 
 mkdir -p $GOPATH/bin
-if [[ -f "/usr/bin/glide" && -f "/usr/local/bin/glide" ]]
+if [[ -f "/usr/bin/glide" || -f "/usr/local/bin/glide" ]]
 then
 	echo "glide found"
 else
