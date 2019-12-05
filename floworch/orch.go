@@ -132,7 +132,7 @@ func orchestrate(flowOrchRequest types.FlowOrchRequest, run *types.Run) bool {
 								logger.Println(MapOfDeleteChannelDetails)
 								// Hit kuborch API to create job
 								everySecond := time.Tick(5 * time.Second)
-								for {
+								for MapOfDeleteChannelDetails[run.Steps[index].UniqueKey].DeleteChannel != nil {
 									logger.Printf("thread - %s - Workload not complete", run.Steps[index].Name)
 									select {
 									case statusInChannel := <-MapOfDeleteChannelDetails[run.Steps[index].UniqueKey].DeleteChannel:
@@ -152,6 +152,8 @@ func orchestrate(flowOrchRequest types.FlowOrchRequest, run *types.Run) bool {
 											imageList[index] = run.Steps[index].UniqueKey + ":" + run.Steps[index].Name
 										}
 										saveKVPairs(run.Steps[index], run)
+										close(MapOfDeleteChannelDetails[run.Steps[index].UniqueKey].DeleteChannel)
+										delete(MapOfDeleteChannelDetails, run.Steps[index].UniqueKey)
 										return
 									// This might not be needed
 									case <-everySecond:
