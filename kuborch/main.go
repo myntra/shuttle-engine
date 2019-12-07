@@ -15,14 +15,16 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 )
 
-// Clientset ...
-var Clientset *kubernetes.Clientset
+var (
+	// Clientset ...
+	Clientset *kubernetes.Clientset
 
-// ClientConfigMap ...
-var ClientConfigMap map[string]ClientConfig
+	// ClientConfigMap ...
+	ClientConfigMap map[string]ClientConfig
 
-// ConfigPath ...
-var ConfigPath *string
+	// ConfigPath ...
+	ConfigPath *string
+)
 
 type configsList []string
 
