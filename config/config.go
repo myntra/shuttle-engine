@@ -8,6 +8,7 @@ import (
 
 // Config ...
 type Config struct {
+	RethinkHost    string  `yaml:"rethinkHost"`
 	Filter         Filters `yaml:"filters"`
 	TotalTimeTable string  `yaml:"totalTimeTable"`
 	StepTimeTable  string  `yaml:"stepTimeTable"`

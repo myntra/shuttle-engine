@@ -115,12 +115,13 @@ func JobWatch(clientset *kubernetes.Clientset, resultChan chan types.WorkloadRes
 				continue
 			}
 			job := event.Object.(*batchv1.Job)
-			log.Printf("Job: %s -> Active: %d, Succeeded: %d, Failed: %d, Spec Completions: %d",
-				job.Name, job.Status.Active, job.Status.Succeeded, job.Status.Failed, *job.Spec.Completions)
+			log.Printf("Job: %s -> Event: %s, Active: %d, Succeeded: %d, Failed: %d, Spec Completions: %d",
+				job.Name, event.Type, job.Status.Active, job.Status.Succeeded, job.Status.Failed, *job.Spec.Completions)
 			switch event.Type {
+			case watch.Added:
+				fallthrough
 			case watch.Modified:
 				sendResponse := false
-				log.Println("New modification poll")
 				res := types.FAILED
 				errMsg := "Job Failed on K8s"
 

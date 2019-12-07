@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/myntra/shuttle-engine/config"
 	"github.com/myntra/shuttle-engine/helpers"
 	"github.com/myntra/shuttle-engine/types"
 
@@ -30,7 +31,7 @@ func executeWorkload(w http.ResponseWriter, req *http.Request) {
 	helpers.PanicOnErrorAPI(helpers.ParseRequest(req, &step), w)
 	// Fetch yaml from predefined_steps table
 	rdbSession, err := r.Connect(r.ConnectOpts{
-		Address:  "dockinsrethink.myntra.com:28015",
+		Address:  config.GetConfig().RethinkHost,
 		Database: "shuttleservices",
 	})
 	helpers.PanicOnErrorAPI(err, w)
@@ -133,7 +134,6 @@ func runKubeCTL(k8scluster, uniqueKey, workloadPath string) {
 			if err == io.EOF {
 				break
 			}
-			log.Fatal(err)
 		}
 
 		log.Println("-----------------------------")
@@ -168,6 +168,9 @@ func runKubeCTL(k8scluster, uniqueKey, workloadPath string) {
 		log.Println("Namespace : ", namespace)
 		switch workloadKind {
 		case "Job":
+			listOpts := metav1.ListOptions{
+				LabelSelector: "job-name=" + structuredObj.GetName(),
+			}
 			go JobWatch(ClientConfigMap[k8scluster].Clientset, watchChannel, namespace, listOpts)
 		case "StatefulSet":
 			go StatefulSetWatch(ClientConfigMap[k8scluster].Clientset, watchChannel, namespace, listOpts)
