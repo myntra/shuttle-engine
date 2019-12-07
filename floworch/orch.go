@@ -123,6 +123,7 @@ func orchestrate(flowOrchRequest types.FlowOrchRequest, run *types.Run) bool {
 									Stage:         flowOrchRequest.Stage,
 									DeleteChannel: make(chan types.WorkloadResult),
 									IgnoreErrors:  run.Steps[index].IgnoreErrors,
+									CreationTime:  time.Now(),
 								}
 								MapOfDeleteChannelDetails[run.Steps[index].UniqueKey] = &deleteChannelDetails
 								logger.Printf("thread - %s - Started Delete Channel", run.Steps[index].Name)
