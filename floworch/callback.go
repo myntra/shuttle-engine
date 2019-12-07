@@ -16,11 +16,9 @@ func callbackHandler(w http.ResponseWriter, r *http.Request) {
 	log.Println(workloadResult)
 	if stepChannelDetails, isPresent := MapOfDeleteChannelDetails[workloadResult.UniqueKey]; isPresent {
 		stepChannelDetails.DeleteChannel <- workloadResult
-		defer close(stepChannelDetails.DeleteChannel)
-		defer delete(MapOfDeleteChannelDetails, workloadResult.UniqueKey)
 		log.Println("Sent channel status")
 	} else {
-		log.Println("Channel not found on process. Should send to raft here")
+		log.Println("Channel not found on process. There must have been a failed step which deleted this running step")
 	}
 	cr := types.CallbackResponse{
 		State: "Callback ACK",

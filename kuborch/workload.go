@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -13,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/myntra/shuttle-engine/config"
 	"github.com/myntra/shuttle-engine/helpers"
 	"github.com/myntra/shuttle-engine/types"
 
@@ -30,7 +30,7 @@ func executeWorkload(w http.ResponseWriter, req *http.Request) {
 	helpers.PanicOnErrorAPI(helpers.ParseRequest(req, &step), w)
 	// Fetch yaml from predefined_steps table
 	rdbSession, err := r.Connect(r.ConnectOpts{
-		Address:  "dockinsrethink.myntra.com:28015",
+		Address:  config.GetConfig().RethinkHost,
 		Database: "shuttleservices",
 	})
 	helpers.PanicOnErrorAPI(err, w)
@@ -43,7 +43,6 @@ func executeWorkload(w http.ResponseWriter, req *http.Request) {
 	var yamlFromDB types.YAMLFromDB
 	err = cursor.One(&yamlFromDB)
 	helpers.PanicOnErrorAPI(err, w)
-
 	workloadPath := "./yaml/" + step.UniqueKey + ".yaml"
 	fileContentInBytes := replaceVariables(yamlFromDB, step, workloadPath)
 	helpers.PanicOnErrorAPI(err, w)
@@ -84,7 +83,7 @@ func replaceVariables(yamlFromDB types.YAMLFromDB, step types.Step, workloadPath
 func runKubeCTL(k8scluster, uniqueKey, workloadPath string) {
 	resChan := make(chan types.WorkloadResult)
 	go func(uniqueKey string) {
-		for {
+		for resChan != nil {
 			log.Println("Waiting on result channel for " + uniqueKey)
 			select {
 			case wr := <-resChan:
@@ -93,7 +92,7 @@ func runKubeCTL(k8scluster, uniqueKey, workloadPath string) {
 				if err != nil {
 					log.Println(err)
 				}
-				return
+				resChan = nil
 			}
 		}
 	}(uniqueKey)
@@ -127,92 +126,106 @@ func runKubeCTL(k8scluster, uniqueKey, workloadPath string) {
 
 	watchChannel := make(chan types.WorkloadResult)
 	defer close(watchChannel)
-	for {
-		ext := runtime.RawExtension{}
-		if err := decoder.Decode(&ext); err != nil {
-			if err == io.EOF {
-				break
-			}
-			log.Fatal(err)
+	// for {
+	ext := runtime.RawExtension{}
+	if err := decoder.Decode(&ext); err != nil {
+		// 	if err == io.EOF {
+		// 		break
+		// 	}
+		resChan <- types.WorkloadResult{
+			UniqueKey: uniqueKey,
+			Result:    types.FAILED,
+			Details:   err.Error(),
 		}
-
-		log.Println("-----------------------------")
-		log.Println("raw: ", string(ext.Raw))
-
-		versions := &runtime.VersionedObjects{}
-		obj, gvk, err := unstructured.UnstructuredJSONScheme.Decode(ext.Raw, nil, versions)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		// GroupKind type
-		workloadKind := gvk.GroupKind().Kind
-		// non existent value is default which is 0
-		workloadTrackMap[workloadKind]++
-
-		objectKindI := obj.GetObjectKind()
-		structuredObj := objectKindI.(*unstructured.Unstructured)
-		labelSet := structuredObj.GetLabels()
-		namespace := structuredObj.GetNamespace()
-
-		listOpts := metav1.ListOptions{
-			LabelSelector: labels.Set(labelSet).String(),
-		}
-
-		log.Println("Workload Kind : ", workloadKind)
-
-		if namespace == "" {
-			namespace = "default"
-		}
-
-		log.Println("Namespace : ", namespace)
-		switch workloadKind {
-		case "Job":
-			go JobWatch(ClientConfigMap[k8scluster].Clientset, watchChannel, namespace, listOpts)
-		case "StatefulSet":
-			go StatefulSetWatch(ClientConfigMap[k8scluster].Clientset, watchChannel, namespace, listOpts)
-		case "Service":
-			go ServiceWatch(ClientConfigMap[k8scluster].Clientset, watchChannel, namespace, listOpts)
-		case "Deployment":
-			go DeploymentWatch(ClientConfigMap[k8scluster].Clientset, watchChannel, namespace, listOpts)
-		default:
-			log.Println("Unknown workload. Completed")
-		}
+		return
 	}
 
-	totalWorkload := len(workloadTrackMap)
-	receivedResults := 0
-	log.Println("Starting wait Loop ... ")
+	log.Println("-----------------------------")
+	log.Println("raw: ", string(ext.Raw))
+
+	versions := &runtime.VersionedObjects{}
+	obj, gvk, err := unstructured.UnstructuredJSONScheme.Decode(ext.Raw, nil, versions)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// GroupKind type
+	workloadKind := gvk.GroupKind().Kind
+	// non existent value is default which is 0
+	workloadTrackMap[workloadKind]++
+
+	objectKindI := obj.GetObjectKind()
+	structuredObj := objectKindI.(*unstructured.Unstructured)
+	labelSet := structuredObj.GetLabels()
+	namespace := structuredObj.GetNamespace()
+	listOpts := metav1.ListOptions{
+		LabelSelector: labels.Set(labelSet).String(),
+	}
+
+	log.Println("Workload Kind : ", workloadKind)
+
+	if namespace == "" {
+		namespace = "default"
+	}
+
+	log.Println("Namespace : ", namespace)
+	switch workloadKind {
+	case "Job":
+		listOpts = metav1.ListOptions{
+			LabelSelector: "job-name=" + uniqueKey,
+		}
+		JobWatch(ClientConfigMap[k8scluster].Clientset, uniqueKey, resChan, namespace, listOpts)
+	case "StatefulSet":
+		go StatefulSetWatch(ClientConfigMap[k8scluster].Clientset, uniqueKey, resChan, namespace, listOpts)
+	case "Service":
+		go ServiceWatch(ClientConfigMap[k8scluster].Clientset, uniqueKey, resChan, namespace, listOpts)
+	case "Deployment":
+		go DeploymentWatch(ClientConfigMap[k8scluster].Clientset, uniqueKey, resChan, namespace, listOpts)
+	default:
+		log.Println("Unknown workload. Completed")
+		resChan <- types.WorkloadResult{
+			UniqueKey: uniqueKey,
+			Result:    types.FAILED,
+			Details:   fmt.Sprintf("Unknown workload - %s", workloadKind),
+		}
+		return
+	}
+	log.Println("runKubeCTL ends")
+	// }
+
+	// totalWorkload := len(workloadTrackMap)
+	// receivedResults := 0
+	// log.Println("Starting wait Loop ... ")
 
 	/**
 	 * result check receieved from go routines
 	 */
-	for {
-		select {
-		case event := <-watchChannel:
-			log.Println("++++++++++++++++++++++++++Recieved Watch Event++++++++++++++++++++++++++++++")
-			log.Println(event)
-			receivedResults++
-			if event.Result == types.FAILED {
-				fmt.Println(event.Details)
-				event.UniqueKey = uniqueKey
-				resChan <- event
-				return
-			}
-			if workloadTrackMap[event.Kind] == 1 {
-				delete(workloadTrackMap, event.Kind)
-			} else {
-				workloadTrackMap[event.Kind]--
-			}
+	// for {
+	// 	select {
+	// 	case event := <-watchChannel:
+	// 		log.Println("++++++++++++++++++++++++++Recieved Watch Event++++++++++++++++++++++++++++++")
+	// 		log.Println(event)
+	// 		receivedResults++
+	// 		if event.Result == types.FAILED {
+	// 			fmt.Println(event.Details)
+	// 			event.UniqueKey = uniqueKey
+	// 			resChan <- event
+	// 			return
+	// 		}
+	// 		if workloadTrackMap[event.Kind] == 1 {
+	// 			delete(workloadTrackMap, event.Kind)
+	// 		} else {
+	// 			workloadTrackMap[event.Kind]--
+	// 		}
 
-			if receivedResults == totalWorkload && len(workloadTrackMap) == 0 {
-				log.Println("Succesfully completed workload", uniqueKey)
-				// hack for unique key specific stuff of floworch
-				event.UniqueKey = uniqueKey
-				resChan <- event
-				return
-			}
-		}
-	}
+	// 		if receivedResults == totalWorkload && len(workloadTrackMap) == 0 {
+	// 			log.Println("Succesfully completed workload", uniqueKey)
+	// 			// hack for unique key specific stuff of floworch
+	// 			event.UniqueKey = uniqueKey
+	// 			resChan <- event
+	// 			return
+	// 		}
+	// 	}
+	// }
 
 }

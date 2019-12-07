@@ -4,10 +4,12 @@ import (
 	"flag"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 
 	"github.com/gorilla/mux"
+	"github.com/myntra/shuttle-engine/config"
 	"github.com/myntra/shuttle-engine/helpers"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
@@ -16,6 +18,7 @@ import (
 // Clientset ...
 var Clientset *kubernetes.Clientset
 
+// ClientConfigMap ...
 var ClientConfigMap map[string]ClientConfig
 
 // ConfigPath ...
@@ -41,6 +44,12 @@ type ClientConfig struct {
 }
 
 func main() {
+	if err := config.ReadConfig(); err != nil {
+		log.Println(err)
+		return
+	}
+	os.RemoveAll("./yaml")
+	_ = os.Mkdir("./yaml", 0777)
 	//Example for Running with configPath is ./kuborch -configPath=clustername:~/kube/config -configPath=clustername1:~/kube/config1
 	flag.Var(&myConfigList, "configPath", "Please provide the Config Map as -configPath=<name>:<configPath>")
 	flag.Parse()

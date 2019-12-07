@@ -45,13 +45,11 @@ func orchestrate(flowOrchRequest types.FlowOrchRequest, run *types.Run) bool {
 						if !singleDeleteChannelDetail.IgnoreErrors {
 							singleDeleteChannelDetail.DeleteChannel <- types.WorkloadResult{
 								UniqueKey: uniqueKey,
-								Result:    "Failed",
+								Result:    types.ABORTED,
 							}
-							close(singleDeleteChannelDetail.DeleteChannel)
-							delete(MapOfDeleteChannelDetails, uniqueKey)
 							// TODO : Stop jobs if they are running
 						} else {
-							logger.Printf("There are workloads which ignoreErrors. Running them")
+							logger.Printf("There are workloads which ignoreErrors. Continuing with them")
 							isEnd = false
 						}
 					}
@@ -126,13 +124,13 @@ func orchestrate(flowOrchRequest types.FlowOrchRequest, run *types.Run) bool {
 									DeleteChannel: make(chan types.WorkloadResult),
 									IgnoreErrors:  run.Steps[index].IgnoreErrors,
 								}
-								MapOfDeleteChannelDetails[run.Steps[index].UniqueKey] = deleteChannelDetails
+								MapOfDeleteChannelDetails[run.Steps[index].UniqueKey] = &deleteChannelDetails
 								logger.Printf("thread - %s - Started Delete Channel", run.Steps[index].Name)
 								logger.Println(run.Steps[index].UniqueKey)
 								logger.Println(MapOfDeleteChannelDetails)
 								// Hit kuborch API to create job
 								everySecond := time.Tick(5 * time.Second)
-								for {
+								for MapOfDeleteChannelDetails[run.Steps[index].UniqueKey] != nil {
 									logger.Printf("thread - %s - Workload not complete", run.Steps[index].Name)
 									select {
 									case statusInChannel := <-MapOfDeleteChannelDetails[run.Steps[index].UniqueKey].DeleteChannel:
@@ -152,6 +150,8 @@ func orchestrate(flowOrchRequest types.FlowOrchRequest, run *types.Run) bool {
 											imageList[index] = run.Steps[index].UniqueKey + ":" + run.Steps[index].Name
 										}
 										saveKVPairs(run.Steps[index], run)
+										close(MapOfDeleteChannelDetails[run.Steps[index].UniqueKey].DeleteChannel)
+										delete(MapOfDeleteChannelDetails, run.Steps[index].UniqueKey)
 										return
 									// This might not be needed
 									case <-everySecond:

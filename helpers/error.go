@@ -1,10 +1,9 @@
 package helpers
 
 import (
-	"log"
+	"fmt"
 	"net/http"
-
-	"github.com/go-errors/errors"
+	"runtime/debug"
 )
 
 // Response ...
@@ -25,13 +24,17 @@ func FailOnErr(err error, resChan *chan string) {
 
 // PrintErr ...
 func PrintErr(err error) {
-	log.Println(errors.Wrap(err, 3).ErrorStack())
+	fmt.Println(err.Error())
+	debug.PrintStack()
+	// log.Println(errors.Wrap(err, 3).ErrorStack())
 }
 
 // PanicOnErrorAPI ...
 func PanicOnErrorAPI(err error, w http.ResponseWriter) {
 	if err != nil {
-		log.Println(errors.Wrap(err, 3).ErrorStack())
+		fmt.Println(err.Error())
+		debug.PrintStack()
+		// log.Println(errors.Wrap(err, 3).ErrorStack())
 		SendResponse("Error : "+err.Error(), 500, w)
 	}
 }

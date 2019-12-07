@@ -13,7 +13,7 @@ import (
 
 var (
 	// MapOfDeleteChannelDetails ...
-	MapOfDeleteChannelDetails = make(map[string]types.DeleteChannelDetails)
+	MapOfDeleteChannelDetails = make(map[string]*types.DeleteChannelDetails)
 
 	// EnableMetrics will have the value of an environment variable("ENABLE_METRICS") which enables the metrics if its value is "ON"
 	EnableMetrics bool
@@ -25,6 +25,7 @@ func main() {
 	router := mux.NewRouter()
 
 	if err := config.ReadConfig(); err != nil {
+		log.Println(err)
 		return
 	}
 

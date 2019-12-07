@@ -15,7 +15,7 @@ import (
 )
 
 // StatefulSetWatch ...
-func StatefulSetWatch(clientset *kubernetes.Clientset, resultChan chan types.WorkloadResult, namespace string, listOpts metav1.ListOptions) {
+func StatefulSetWatch(clientset *kubernetes.Clientset, uniqueKey string, resultChan chan types.WorkloadResult, namespace string, listOpts metav1.ListOptions) {
 
 	watcher, err := clientset.AppsV1().StatefulSets(namespace).Watch(listOpts)
 	if err != nil {
@@ -30,9 +30,10 @@ func StatefulSetWatch(clientset *kubernetes.Clientset, resultChan chan types.Wor
 		case event := <-ch:
 			if event.Type == watch.Deleted {
 				resultChan <- types.WorkloadResult{
-					Result:  types.SUCCEEDED,
-					Details: "",
-					Kind:    "StatefulSet",
+					UniqueKey: uniqueKey,
+					Result:    types.SUCCEEDED,
+					Details:   "",
+					Kind:      "StatefulSet",
 				}
 				return
 			} else if event.Type == watch.Modified {
@@ -44,25 +45,27 @@ func StatefulSetWatch(clientset *kubernetes.Clientset, resultChan chan types.Wor
 					sfs.Status.CurrentReplicas == sfs.Status.UpdatedReplicas &&
 					sfs.Status.CurrentRevision == sfs.Status.UpdateRevision {
 					resultChan <- types.WorkloadResult{
-						Result:  types.SUCCEEDED,
-						Details: "",
-						Kind:    "StatefulSet",
+						UniqueKey: uniqueKey,
+						Result:    types.SUCCEEDED,
+						Details:   "",
+						Kind:      "StatefulSet",
 					}
 					return
 				}
 			}
 		case <-time.After(15 * time.Second):
 			resultChan <- types.WorkloadResult{
-				Result:  types.FAILED,
-				Details: "Timed out while waiting for events with StatefulSet",
-				Kind:    "StatefulSet",
+				UniqueKey: uniqueKey,
+				Result:    types.FAILED,
+				Details:   "Timed out while waiting for events with StatefulSet",
+				Kind:      "StatefulSet",
 			}
 		}
 	}
 }
 
 // ServiceWatch ...
-func ServiceWatch(clientset *kubernetes.Clientset, resultChan chan types.WorkloadResult, namespace string, listOpts metav1.ListOptions) {
+func ServiceWatch(clientset *kubernetes.Clientset, uniqueKey string, resultChan chan types.WorkloadResult, namespace string, listOpts metav1.ListOptions) {
 
 	watcher, err := clientset.CoreV1().Services(namespace).Watch(listOpts)
 	if err != nil {
@@ -78,24 +81,27 @@ func ServiceWatch(clientset *kubernetes.Clientset, resultChan chan types.Workloa
 			fmt.Println(event.Type)
 			if event.Type == watch.Deleted || event.Type == watch.Added {
 				resultChan <- types.WorkloadResult{
-					Result:  types.SUCCEEDED,
-					Details: "",
-					Kind:    "Service",
+					UniqueKey: uniqueKey,
+					Result:    types.SUCCEEDED,
+					Details:   "",
+					Kind:      "Service",
 				}
 				return
 			}
 		case <-time.After(5 * time.Second):
 			resultChan <- types.WorkloadResult{
-				Result:  types.FAILED,
-				Details: "Timed out while waiting for events with Service",
-				Kind:    "StatefulSet",
+				UniqueKey: uniqueKey,
+				Result:    types.FAILED,
+				Details:   "Timed out while waiting for events with Service",
+				Kind:      "StatefulSet",
 			}
 		}
 	}
 }
 
 // JobWatch ...
-func JobWatch(clientset *kubernetes.Clientset, resultChan chan types.WorkloadResult, namespace string, listOpts metav1.ListOptions) {
+func JobWatch(clientset *kubernetes.Clientset, uniqueKey string, resultChan chan types.WorkloadResult, namespace string, listOpts metav1.ListOptions) {
+	log.Println("LabelSelector", listOpts.LabelSelector)
 	watcher, err := clientset.BatchV1().Jobs(namespace).Watch(listOpts)
 	if err != nil {
 		log.Println("Failure in creating the watcher")
@@ -115,9 +121,11 @@ func JobWatch(clientset *kubernetes.Clientset, resultChan chan types.WorkloadRes
 				continue
 			}
 			job := event.Object.(*batchv1.Job)
-			log.Printf("Job: %s -> Active: %d, Succeeded: %d, Failed: %d, Spec Completions: %d",
-				job.Name, job.Status.Active, job.Status.Succeeded, job.Status.Failed, *job.Spec.Completions)
+			log.Printf("Job: %s -> Event Type: %s Active: %d, Succeeded: %d, Failed: %d, Spec Completions: %d",
+				job.Name, event.Type, job.Status.Active, job.Status.Succeeded, job.Status.Failed, *job.Spec.Completions)
 			switch event.Type {
+			case watch.Added: //When the result channel is refreshed, the watcher sends the events as ADDED
+				fallthrough
 			case watch.Modified:
 				sendResponse := false
 				log.Println("New modification poll")
@@ -142,10 +150,10 @@ func JobWatch(clientset *kubernetes.Clientset, resultChan chan types.WorkloadRes
 				if sendResponse {
 					log.Println("Stopping Poll")
 					resultChan <- types.WorkloadResult{
-						// UniqueKey: uniqueKey,
-						Result:  res,
-						Details: errMsg,
-						Kind:    "Job",
+						UniqueKey: uniqueKey,
+						Result:    res,
+						Details:   errMsg,
+						Kind:      "Job",
 					}
 					return
 				}
@@ -154,10 +162,10 @@ func JobWatch(clientset *kubernetes.Clientset, resultChan chan types.WorkloadRes
 			log.Println("Timeout for Job !!")
 			log.Println("Stopping Poll")
 			resultChan <- types.WorkloadResult{
-				// UniqueKey: uniqueKey,
-				Result:  types.FAILED,
-				Details: "timeout",
-				Kind:    "Job",
+				UniqueKey: uniqueKey,
+				Result:    types.FAILED,
+				Details:   "timeout",
+				Kind:      "Job",
 			}
 			return
 		}
@@ -165,7 +173,7 @@ func JobWatch(clientset *kubernetes.Clientset, resultChan chan types.WorkloadRes
 }
 
 // DeploymentWatch ...
-func DeploymentWatch(clientset *kubernetes.Clientset, resultChan chan types.WorkloadResult, namespace string, listOpts metav1.ListOptions) {
+func DeploymentWatch(clientset *kubernetes.Clientset, uniqueKey string, resultChan chan types.WorkloadResult, namespace string, listOpts metav1.ListOptions) {
 
 	watcher, err := clientset.AppsV1().Deployments(namespace).Watch(listOpts)
 	if err != nil {
@@ -180,9 +188,10 @@ func DeploymentWatch(clientset *kubernetes.Clientset, resultChan chan types.Work
 		case event := <-ch:
 			if event.Type == watch.Deleted {
 				resultChan <- types.WorkloadResult{
-					Result:  types.SUCCEEDED,
-					Details: "",
-					Kind:    "Deployment",
+					UniqueKey: uniqueKey,
+					Result:    types.SUCCEEDED,
+					Details:   "",
+					Kind:      "Deployment",
 				}
 				return
 			} else if event.Type == watch.Modified {
@@ -193,9 +202,10 @@ func DeploymentWatch(clientset *kubernetes.Clientset, resultChan chan types.Work
 					dpl.Status.AvailableReplicas == *(dpl.Spec.Replicas) &&
 					dpl.Status.ObservedGeneration >= dpl.Generation {
 					resultChan <- types.WorkloadResult{
-						Result:  types.SUCCEEDED,
-						Details: "",
-						Kind:    "Deployment",
+						UniqueKey: uniqueKey,
+						Result:    types.SUCCEEDED,
+						Details:   "",
+						Kind:      "Deployment",
 					}
 					return
 				}
@@ -204,9 +214,10 @@ func DeploymentWatch(clientset *kubernetes.Clientset, resultChan chan types.Work
 			log.Println("------------------++")
 			log.Printf("Sending timeout for namespace:%s, label:%s\n", namespace, listOpts.LabelSelector)
 			resultChan <- types.WorkloadResult{
-				Result:  types.FAILED,
-				Details: "Timed out while waiting for events with Deployment",
-				Kind:    "Deployment",
+				UniqueKey: uniqueKey,
+				Result:    types.FAILED,
+				Details:   "Timed out while waiting for events with Deployment",
+				Kind:      "Deployment",
 			}
 			return
 		}

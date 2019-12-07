@@ -7,6 +7,7 @@ import (
 	"github.com/myntra/shuttle-engine/helpers"
 )
 
+// HealthCheckHandler ...
 func HealthCheckHandler(w http.ResponseWriter, req *http.Request) {
 	eRes := helpers.Response{
 		State: "online",
