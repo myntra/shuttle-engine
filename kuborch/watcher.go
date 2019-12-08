@@ -109,14 +109,14 @@ func JobWatch(clientset *kubernetes.Clientset, resultChan chan types.WorkloadRes
 		select {
 		case event := <-ch:
 			if event.Object == nil {
-				log.Println("-- Received nil event from closed channel, refreshing channel --")
+				log.Println("[ ", listOpts.FieldSelector, "] -- Received nil event from closed channel, refreshing channel --")
 				watcher, _ = clientset.BatchV1().Jobs(namespace).Watch(listOpts)
 				ch = watcher.ResultChan()
 				continue
 			}
 			job := event.Object.(*batchv1.Job)
-			log.Printf("Job: %s -> Event: %s, Active: %d, Succeeded: %d, Failed: %d, Spec Completions: %d",
-				job.Name, event.Type, job.Status.Active, job.Status.Succeeded, job.Status.Failed, *job.Spec.Completions)
+			log.Printf("[ %s ] Job: %s -> Event: %s, Active: %d, Succeeded: %d, Failed: %d, Spec Completions: %d",
+				listOpts.FieldSelector, job.Name, event.Type, job.Status.Active, job.Status.Succeeded, job.Status.Failed, *job.Spec.Completions)
 			switch event.Type {
 			case watch.Added:
 				fallthrough
@@ -126,7 +126,7 @@ func JobWatch(clientset *kubernetes.Clientset, resultChan chan types.WorkloadRes
 				errMsg := "Job Failed on K8s"
 
 				if job.Status.Failed > 0 {
-					log.Println("Workload Failed")
+					log.Println("[ ", listOpts.FieldSelector, "] Workload Failed")
 					sendResponse = true
 				}
 
@@ -134,14 +134,14 @@ func JobWatch(clientset *kubernetes.Clientset, resultChan chan types.WorkloadRes
 					job.Status.Failed == 0 &&
 					job.Status.Succeeded == *job.Spec.Completions {
 
-					log.Println("Workload Succeeded")
+					log.Println("[ ", listOpts.FieldSelector, "] Workload Succeeded")
 					res = types.SUCCEEDED
 					errMsg = ""
 					sendResponse = true
 				}
 
 				if sendResponse {
-					log.Println("Stopping Poll")
+					log.Println("[ ", listOpts.FieldSelector, "] Stopping Poll")
 					resultChan <- types.WorkloadResult{
 						// UniqueKey: uniqueKey,
 						Result:  res,
@@ -152,8 +152,8 @@ func JobWatch(clientset *kubernetes.Clientset, resultChan chan types.WorkloadRes
 				}
 			}
 		case <-time.After(45 * time.Minute):
-			log.Println("Timeout for Job !!")
-			log.Println("Stopping Poll")
+			log.Println("[ ", listOpts.FieldSelector, "] Timeout for Job !!")
+			log.Println("[ ", listOpts.FieldSelector, "] Stopping Poll")
 			resultChan <- types.WorkloadResult{
 				// UniqueKey: uniqueKey,
 				Result:  types.FAILED,
