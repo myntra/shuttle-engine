@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/myntra/shuttle-engine/config"
 	"github.com/myntra/shuttle-engine/types"
 	gorethink "gopkg.in/gorethink/gorethink.v4"
 )
@@ -8,7 +9,7 @@ import (
 func getContent(flowOrchRequest types.FlowOrchRequest) (types.YAMLFromDB, error) {
 	var yamlFromDB types.YAMLFromDB
 	rdbSession, err := gorethink.Connect(gorethink.ConnectOpts{
-		Address:  "dockinsrethink.myntra.com:28015",
+		Address:  config.GetConfig().RethinkHost,
 		Database: "shuttleservices",
 	})
 	if err != nil {
@@ -31,7 +32,7 @@ func getContent(flowOrchRequest types.FlowOrchRequest) (types.YAMLFromDB, error)
 
 func updateRunDetailsToDB(run *types.Run) (*types.Run, error) {
 	rdbSession, err := gorethink.Connect(gorethink.ConnectOpts{
-		Address:  "dockinsrethink.myntra.com:28015",
+		Address:  config.GetConfig().RethinkHost,
 		Database: "shuttleservices",
 	})
 	if err != nil {

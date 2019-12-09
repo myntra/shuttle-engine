@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/myntra/shuttle-engine/config"
 	"github.com/myntra/shuttle-engine/helpers"
 	"github.com/myntra/shuttle-engine/types"
 
@@ -20,9 +21,11 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/yaml"
+	"k8s.io/kubernetes/pkg/apis/core"
 )
 
 func executeWorkload(w http.ResponseWriter, req *http.Request) {
@@ -30,7 +33,7 @@ func executeWorkload(w http.ResponseWriter, req *http.Request) {
 	helpers.PanicOnErrorAPI(helpers.ParseRequest(req, &step), w)
 	// Fetch yaml from predefined_steps table
 	rdbSession, err := r.Connect(r.ConnectOpts{
-		Address:  "dockinsrethink.myntra.com:28015",
+		Address:  config.GetConfig().RethinkHost,
 		Database: "shuttleservices",
 	})
 	helpers.PanicOnErrorAPI(err, w)
@@ -133,7 +136,6 @@ func runKubeCTL(k8scluster, uniqueKey, workloadPath string) {
 			if err == io.EOF {
 				break
 			}
-			log.Fatal(err)
 		}
 
 		log.Println("-----------------------------")
@@ -154,9 +156,9 @@ func runKubeCTL(k8scluster, uniqueKey, workloadPath string) {
 		structuredObj := objectKindI.(*unstructured.Unstructured)
 		labelSet := structuredObj.GetLabels()
 		namespace := structuredObj.GetNamespace()
-
+		labelSelector := labels.Set(labelSet).String()
 		listOpts := metav1.ListOptions{
-			LabelSelector: labels.Set(labelSet).String(),
+			LabelSelector: labelSelector,
 		}
 
 		log.Println("Workload Kind : ", workloadKind)
@@ -168,6 +170,9 @@ func runKubeCTL(k8scluster, uniqueKey, workloadPath string) {
 		log.Println("Namespace : ", namespace)
 		switch workloadKind {
 		case "Job":
+			listOpts = metav1.ListOptions{
+				FieldSelector: fields.OneTermEqualSelector(core.ObjectNameField, structuredObj.GetName()).String(),
+			}
 			go JobWatch(ClientConfigMap[k8scluster].Clientset, watchChannel, namespace, listOpts)
 		case "StatefulSet":
 			go StatefulSetWatch(ClientConfigMap[k8scluster].Clientset, watchChannel, namespace, listOpts)
