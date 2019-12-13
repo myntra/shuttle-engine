@@ -48,6 +48,13 @@ type DeleteChannelDetails struct {
 	CreationTime  time.Time           `json:"creationTime"`
 }
 
+// AbortRunDetails ...
+type AbortRunDetails struct {
+	ID          string `json:"id"`
+	Stage       string `json:"stage"`
+	Description string `json:"description"`
+}
+
 const (
 	// QUEUED ...
 	QUEUED = "Queued"
