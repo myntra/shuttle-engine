@@ -48,10 +48,11 @@ type DeleteChannelDetails struct {
 	CreationTime  time.Time           `json:"creationTime"`
 }
 
-// AbortRunDetails ...
-type AbortRunDetails struct {
+// Abort ...
+// Used for {stage}_aborts
+type Abort struct {
 	ID          string `json:"id"`
-	Stage       string `json:"stage"`
+	CreatedOn   string `json:"created_on"`
 	Description string `json:"description"`
 }
 

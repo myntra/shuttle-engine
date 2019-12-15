@@ -50,3 +50,29 @@ func updateRunDetailsToDB(run *types.Run) (*types.Run, error) {
 	}
 	return run, nil
 }
+
+// GetAbortDetails ...
+func GetAbortDetails(id string, stage string) (types.Abort, error) {
+
+	var abort types.Abort
+	rdbSession, err := gorethink.Connect(gorethink.ConnectOpts{
+		Address:  config.GetConfig().RethinkHost,
+		Database: "shuttleservices",
+	})
+	if err != nil {
+		return abort, err
+	}
+	defer rdbSession.Close()
+	cursor, err := gorethink.Table(stage + "_aborts").
+		Filter(map[string]interface{}{
+			"id": id,
+		}).
+		Run(rdbSession)
+
+	// if cursor.IsNil() {
+	// 	return abort, errors.New("No Abort found")
+	// }
+	err = cursor.One(&abort)
+
+	return abort, err
+}

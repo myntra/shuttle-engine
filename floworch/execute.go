@@ -53,9 +53,9 @@ func executeHandler(w http.ResponseWriter, r *http.Request) {
 			Steps:  stageSteps,
 		}
 		// Start Ticker
-		hasAnyWorkloadFailed := orchestrate(flowOrchRequest, run)
+		workloadStatus := orchestrate(flowOrchRequest, run)
 		// Update Run status
-		updateStatus(run, hasAnyWorkloadFailed)
+		updateStatus(run, workloadStatus)
 	}()
 	helpers.SendResponse("Workload triggered", 200, w)
 }

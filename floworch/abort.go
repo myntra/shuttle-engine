@@ -33,7 +33,7 @@ func AbortRunHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var abortrundetails types.AbortRunDetails
+	var abortrundetails types.Abort
 	err = json.Unmarshal(data, &abortrundetails)
 	if err != nil {
 		helpers.SendResponse(err.Error(), 500, w)
@@ -41,9 +41,8 @@ func AbortRunHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	abortrundetails.ID = runID
-	abortrundetails.Stage = stage
 
-	err = UpdateAbortStatus(abortrundetails)
+	err = UpdateAbortStatus(abortrundetails, stage)
 
 	if err != nil {
 		helpers.SendResponse(err.Error(), 500, w)
@@ -54,7 +53,7 @@ func AbortRunHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // UpdateAbortStatus ...
-func UpdateAbortStatus(ard types.AbortRunDetails) error {
+func UpdateAbortStatus(ard types.Abort, stage string) error {
 	rdbSession, err := gorethink.Connect(gorethink.ConnectOpts{
 		Address:  config.GetConfig().RethinkHost,
 		Database: "shuttleservices",
@@ -64,7 +63,7 @@ func UpdateAbortStatus(ard types.AbortRunDetails) error {
 	}
 	defer rdbSession.Close()
 
-	_, err = gorethink.Table(ard.Stage+"_aborts").Insert(map[string]interface{}{
+	_, err = gorethink.Table(stage+"_aborts").Insert(map[string]interface{}{
 		"id":          ard.ID,
 		"created_on":  time.Now().UTC().Format(time.ANSIC),
 		"description": ard.Description,
