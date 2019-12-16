@@ -52,7 +52,7 @@ type DeleteChannelDetails struct {
 // Used for {stage}_aborts
 type Abort struct {
 	ID          string `json:"id"`
-	CreatedOn   string `json:"created_on"`
+	CreatedOn   string `json:"createdOn"`
 	Description string `json:"description"`
 }
 

@@ -68,10 +68,6 @@ func GetAbortDetails(id string, stage string) (types.Abort, error) {
 			"id": id,
 		}).
 		Run(rdbSession)
-
-	// if cursor.IsNil() {
-	// 	return abort, errors.New("No Abort found")
-	// }
 	err = cursor.One(&abort)
 
 	return abort, err

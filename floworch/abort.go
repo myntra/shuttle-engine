@@ -65,7 +65,7 @@ func UpdateAbortStatus(ard types.Abort, stage string) error {
 
 	_, err = gorethink.Table(stage+"_aborts").Insert(map[string]interface{}{
 		"id":          ard.ID,
-		"created_on":  time.Now().UTC().Format(time.ANSIC),
+		"createdOn":   time.Now().Format(time.ANSIC),
 		"description": ard.Description,
 	}, gorethink.InsertOpts{
 		Conflict: "update",

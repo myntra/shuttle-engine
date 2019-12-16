@@ -35,11 +35,12 @@ func orchestrate(flowOrchRequest types.FlowOrchRequest, run *types.Run) string {
 		case <-tick:
 			// check if a run has been aborted
 			val, err := GetAbortDetails(run.ID, run.Stage)
-			if err == nil && val.ID == run.ID {
+			if err != nil {
+				logger.Printf("Error in fetching abort details for [%s] run %s\n", run.Stage, run.ID)
+			} else {
 				isExternalAbort = true
 				hasWorkloadFailed = true
 				abortDescription = val.Description
-
 			}
 
 			second += interval
