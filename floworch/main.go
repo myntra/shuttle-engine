@@ -41,6 +41,7 @@ func main() {
 	router.HandleFunc("/execute", executeHandler).Methods("Post")
 	router.HandleFunc("/callback", callbackHandler).Methods("Post")
 	router.HandleFunc("/healthcheck", HealthCheckHandler).Methods("Get")
+	router.HandleFunc("/runs/{id}/abort", AbortRunHandler).Methods("Post")
 	router.HandleFunc("/queue", QueueStatusHandler).Methods("Get")
 	port := 5500
 	log.Printf("Starting server on :%d", port)

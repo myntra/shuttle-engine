@@ -10,7 +10,7 @@ import (
 	"github.com/myntra/shuttle-engine/types"
 )
 
-func orchestrate(flowOrchRequest types.FlowOrchRequest, run *types.Run) bool {
+func orchestrate(flowOrchRequest types.FlowOrchRequest, run *types.Run) string {
 	defer helpers.TimeTracker(EnableMetrics, time.Now(), true, flowOrchRequest.Stage, "", "", flowOrchRequest.ID, flowOrchRequest.Meta)
 	logFile, err := os.OpenFile(flowOrchRequest.ID, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
@@ -28,9 +28,21 @@ func orchestrate(flowOrchRequest types.FlowOrchRequest, run *types.Run) bool {
 	isEnd := false
 	second := 0
 	hasWorkloadFailed := false
+	isExternalAbort := false
+	abortDescription := ""
 	for (len(completedSteps) != len(run.Steps)) && !isEnd {
 		select {
 		case <-tick:
+			// check if a run has been aborted
+			val, err := GetAbortDetails(run.ID, run.Stage)
+			if err != nil {
+				logger.Printf("Error in fetching abort details for [%s] run %s\n", run.Stage, run.ID)
+			} else {
+				isExternalAbort = true
+				hasWorkloadFailed = true
+				abortDescription = val.Description
+			}
+
 			second += interval
 			logger.Printf("\n\n%dth Second", second)
 			if hasWorkloadFailed {
@@ -106,8 +118,10 @@ func orchestrate(flowOrchRequest types.FlowOrchRequest, run *types.Run) bool {
 								run.Steps[index].K8SCluster = flowOrchRequest.K8SCluster
 							}
 
-							// sending hasWorkloadFailed as an ENV variable
+							// sending failure/abort info ENV variable
 							run.Steps[index].Replacers["hasWorkloadFailed"] = strconv.FormatBool(hasWorkloadFailed)
+							run.Steps[index].Replacers["isExternalAbort"] = strconv.FormatBool(isExternalAbort)
+							run.Steps[index].Replacers["abortDescription"] = abortDescription
 							_, err := helpers.Post("http://localhost:5600/executeworkload", run.Steps[index], nil)
 							if err != nil {
 								logger.Printf("thread - %s - Workload API has failed. Stopping in 5 seconds", run.Steps[index].Name)
@@ -180,5 +194,13 @@ func orchestrate(flowOrchRequest types.FlowOrchRequest, run *types.Run) bool {
 		}
 	}
 	updateRunDetailsToDB(run)
-	return hasWorkloadFailed
+
+	if hasWorkloadFailed {
+		if isExternalAbort {
+			return types.ABORTED
+		}
+		return types.FAILED
+	}
+	return types.SUCCEEDED
+
 }
