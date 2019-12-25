@@ -15,6 +15,9 @@ import (
 	batchv1 "k8s.io/api/batch/v1"
 )
 
+// MaxRetries ...
+var MaxRetries int = 20
+
 // StatefulSetWatch ...
 func StatefulSetWatch(clientset *kubernetes.Clientset, resultChan chan types.WorkloadResult, namespace string, listOpts metav1.ListOptions) {
 
@@ -97,7 +100,7 @@ func ServiceWatch(clientset *kubernetes.Clientset, resultChan chan types.Workloa
 
 // JobWatch ...
 func JobWatch(clientset *kubernetes.Clientset, resultChan chan types.WorkloadResult, namespace string, listOpts metav1.ListOptions) {
-	watcher, err := GetWatcher(clientset, namespace, listOpts, "job", 20)
+	watcher, err := GetWatcher(clientset, namespace, listOpts, "job")
 
 	if err != nil {
 		log.Println("[ ", listOpts.FieldSelector, "] -- Failure in creating the watcher --")
@@ -116,7 +119,7 @@ func JobWatch(clientset *kubernetes.Clientset, resultChan chan types.WorkloadRes
 		case event := <-ch:
 			if event.Object == nil {
 				log.Println("[ ", listOpts.FieldSelector, "] -- Received nil event from closed channel, refreshing channel --")
-				watcher, err = GetWatcher(clientset, namespace, listOpts, "job", 20)
+				watcher, err = GetWatcher(clientset, namespace, listOpts, "job")
 				if err != nil {
 					resultChan <- types.WorkloadResult{
 						Result:  types.FAILED,
@@ -182,7 +185,7 @@ func JobWatch(clientset *kubernetes.Clientset, resultChan chan types.WorkloadRes
 // DeploymentWatch ...
 func DeploymentWatch(clientset *kubernetes.Clientset, resultChan chan types.WorkloadResult, namespace string, listOpts metav1.ListOptions) {
 
-	watcher, err := GetWatcher(clientset, namespace, listOpts, "deployment", 20)
+	watcher, err := GetWatcher(clientset, namespace, listOpts, "deployment")
 	if err != nil {
 		log.Println("[ ", listOpts.LabelSelector, "] -- Failure in creating the watcher --")
 		resultChan <- types.WorkloadResult{
@@ -200,7 +203,7 @@ func DeploymentWatch(clientset *kubernetes.Clientset, resultChan chan types.Work
 		case event := <-ch:
 			if event.Object == nil {
 				log.Println("[ ", listOpts.LabelSelector, "] -- Received nil event from closed channel, refreshing channel --")
-				watcher, err = GetWatcher(clientset, namespace, listOpts, "deployment", 20)
+				watcher, err = GetWatcher(clientset, namespace, listOpts, "deployment")
 				if err != nil {
 					resultChan <- types.WorkloadResult{
 						Result:  types.FAILED,
@@ -250,12 +253,12 @@ func DeploymentWatch(clientset *kubernetes.Clientset, resultChan chan types.Work
 
 // GetWatcher ...
 // Retries every second
-func GetWatcher(clientset *kubernetes.Clientset, namespace string, listOpts metav1.ListOptions, workloadType string, maxRetries int) (watch.Interface, error) {
+func GetWatcher(clientset *kubernetes.Clientset, namespace string, listOpts metav1.ListOptions, workloadType string) (watch.Interface, error) {
 	retries := 0
 
 	watcher, err := GetWorkloadWatcher(clientset, namespace, listOpts, workloadType)
 	for {
-		if retries > maxRetries {
+		if retries > MaxRetries {
 			return nil, errors.New("retries for acquiring " + workloadType + " watcher exhasuted")
 		}
 		retries++
