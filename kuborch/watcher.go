@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"time"
@@ -13,6 +14,9 @@ import (
 
 	batchv1 "k8s.io/api/batch/v1"
 )
+
+// MaxRetries ...
+var MaxRetries int = 20
 
 // StatefulSetWatch ...
 func StatefulSetWatch(clientset *kubernetes.Clientset, resultChan chan types.WorkloadResult, namespace string, listOpts metav1.ListOptions) {
@@ -96,10 +100,15 @@ func ServiceWatch(clientset *kubernetes.Clientset, resultChan chan types.Workloa
 
 // JobWatch ...
 func JobWatch(clientset *kubernetes.Clientset, resultChan chan types.WorkloadResult, namespace string, listOpts metav1.ListOptions) {
-	watcher, err := clientset.BatchV1().Jobs(namespace).Watch(listOpts)
+	watcher, err := GetWatcher(clientset, namespace, listOpts, "job")
+
 	if err != nil {
-		log.Println("Failure in creating the watcher")
-		log.Println(err)
+		log.Println("[ ", listOpts.FieldSelector, "] -- Failure in creating the watcher --")
+		resultChan <- types.WorkloadResult{
+			Result:  types.FAILED,
+			Details: err.Error(),
+			Kind:    "Job",
+		}
 		return
 	}
 
@@ -110,7 +119,15 @@ func JobWatch(clientset *kubernetes.Clientset, resultChan chan types.WorkloadRes
 		case event := <-ch:
 			if event.Object == nil {
 				log.Println("[ ", listOpts.FieldSelector, "] -- Received nil event from closed channel, refreshing channel --")
-				watcher, _ = clientset.BatchV1().Jobs(namespace).Watch(listOpts)
+				watcher, err = GetWatcher(clientset, namespace, listOpts, "job")
+				if err != nil {
+					resultChan <- types.WorkloadResult{
+						Result:  types.FAILED,
+						Details: err.Error(),
+						Kind:    "Job",
+					}
+					return
+				}
 				ch = watcher.ResultChan()
 				continue
 			}
@@ -168,10 +185,15 @@ func JobWatch(clientset *kubernetes.Clientset, resultChan chan types.WorkloadRes
 // DeploymentWatch ...
 func DeploymentWatch(clientset *kubernetes.Clientset, resultChan chan types.WorkloadResult, namespace string, listOpts metav1.ListOptions) {
 
-	watcher, err := clientset.AppsV1().Deployments(namespace).Watch(listOpts)
+	watcher, err := GetWatcher(clientset, namespace, listOpts, "deployment")
 	if err != nil {
-		fmt.Println("Failure in creating the watcher")
-		fmt.Println(err)
+		log.Println("[ ", listOpts.LabelSelector, "] -- Failure in creating the watcher --")
+		resultChan <- types.WorkloadResult{
+			Result:  types.FAILED,
+			Details: err.Error(),
+			Kind:    "Deployment",
+		}
+		return
 	}
 
 	ch := watcher.ResultChan()
@@ -179,6 +201,21 @@ func DeploymentWatch(clientset *kubernetes.Clientset, resultChan chan types.Work
 	for {
 		select {
 		case event := <-ch:
+			if event.Object == nil {
+				log.Println("[ ", listOpts.LabelSelector, "] -- Received nil event from closed channel, refreshing channel --")
+				watcher, err = GetWatcher(clientset, namespace, listOpts, "deployment")
+				if err != nil {
+					resultChan <- types.WorkloadResult{
+						Result:  types.FAILED,
+						Details: err.Error(),
+						Kind:    "Deployment",
+					}
+					return
+				}
+				ch = watcher.ResultChan()
+				continue
+			}
+
 			if event.Type == watch.Deleted {
 				resultChan <- types.WorkloadResult{
 					Result:  types.SUCCEEDED,
@@ -212,4 +249,40 @@ func DeploymentWatch(clientset *kubernetes.Clientset, resultChan chan types.Work
 			return
 		}
 	}
+}
+
+// GetWatcher ...
+// Retries every second
+func GetWatcher(clientset *kubernetes.Clientset, namespace string, listOpts metav1.ListOptions, workloadType string) (watch.Interface, error) {
+	retries := 0
+
+	watcher, err := GetWorkloadWatcher(clientset, namespace, listOpts, workloadType)
+	for {
+		if retries > MaxRetries {
+			return nil, errors.New("retries for acquiring " + workloadType + " watcher exhasuted")
+		}
+		retries++
+		time.Sleep(time.Second * 1)
+		if err != nil {
+			log.Println("------ Error in obtaining the " + workloadType + " watcher ------")
+			watcher, err = GetWorkloadWatcher(clientset, namespace, listOpts, workloadType)
+			continue
+		}
+		break
+	}
+	return watcher, nil
+}
+
+// GetWorkloadWatcher ...
+// Method for returning watcher for supported types
+func GetWorkloadWatcher(clientset *kubernetes.Clientset, namespace string, listOpts metav1.ListOptions, workloadType string) (watch.Interface, error) {
+	var watcher watch.Interface
+	var err error
+	switch workloadType {
+	case "job":
+		watcher, err = clientset.BatchV1().Jobs(namespace).Watch(listOpts)
+	case "deployment":
+		watcher, err = clientset.AppsV1().Deployments(namespace).Watch(listOpts)
+	}
+	return watcher, err
 }
