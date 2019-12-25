@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"time"
@@ -96,10 +97,14 @@ func ServiceWatch(clientset *kubernetes.Clientset, resultChan chan types.Workloa
 
 // JobWatch ...
 func JobWatch(clientset *kubernetes.Clientset, resultChan chan types.WorkloadResult, namespace string, listOpts metav1.ListOptions) {
-	watcher, err := clientset.BatchV1().Jobs(namespace).Watch(listOpts)
+	watcher, err := JobWatchHelper(clientset, namespace, listOpts)
 	if err != nil {
-		log.Println("Failure in creating the watcher")
-		log.Println(err)
+		log.Println("[ ", listOpts.FieldSelector, "] -- Failure in creating the watcher --")
+		resultChan <- types.WorkloadResult{
+			Result:  types.FAILED,
+			Details: err.Error(),
+			Kind:    "Job",
+		}
 		return
 	}
 
@@ -110,7 +115,15 @@ func JobWatch(clientset *kubernetes.Clientset, resultChan chan types.WorkloadRes
 		case event := <-ch:
 			if event.Object == nil {
 				log.Println("[ ", listOpts.FieldSelector, "] -- Received nil event from closed channel, refreshing channel --")
-				watcher, _ = clientset.BatchV1().Jobs(namespace).Watch(listOpts)
+				watcher, err = JobWatchHelper(clientset, namespace, listOpts)
+				if err != nil {
+					resultChan <- types.WorkloadResult{
+						Result:  types.FAILED,
+						Details: err.Error(),
+						Kind:    "Job",
+					}
+					return
+				}
 				ch = watcher.ResultChan()
 				continue
 			}
@@ -168,10 +181,15 @@ func JobWatch(clientset *kubernetes.Clientset, resultChan chan types.WorkloadRes
 // DeploymentWatch ...
 func DeploymentWatch(clientset *kubernetes.Clientset, resultChan chan types.WorkloadResult, namespace string, listOpts metav1.ListOptions) {
 
-	watcher, err := clientset.AppsV1().Deployments(namespace).Watch(listOpts)
+	watcher, err := DeploymentWatchHelper(clientset, namespace, listOpts)
 	if err != nil {
-		fmt.Println("Failure in creating the watcher")
-		fmt.Println(err)
+		log.Println("[ ", listOpts.LabelSelector, "] -- Failure in creating the watcher --")
+		resultChan <- types.WorkloadResult{
+			Result:  types.FAILED,
+			Details: err.Error(),
+			Kind:    "Deployment",
+		}
+		return
 	}
 
 	ch := watcher.ResultChan()
@@ -179,6 +197,21 @@ func DeploymentWatch(clientset *kubernetes.Clientset, resultChan chan types.Work
 	for {
 		select {
 		case event := <-ch:
+			if event.Object == nil {
+				log.Println("[ ", listOpts.LabelSelector, "] -- Received nil event from closed channel, refreshing channel --")
+				watcher, err = DeploymentWatchHelper(clientset, namespace, listOpts)
+				if err != nil {
+					resultChan <- types.WorkloadResult{
+						Result:  types.FAILED,
+						Details: err.Error(),
+						Kind:    "Deployment",
+					}
+					return
+				}
+				ch = watcher.ResultChan()
+				continue
+			}
+
 			if event.Type == watch.Deleted {
 				resultChan <- types.WorkloadResult{
 					Result:  types.SUCCEEDED,
@@ -212,4 +245,44 @@ func DeploymentWatch(clientset *kubernetes.Clientset, resultChan chan types.Work
 			return
 		}
 	}
+}
+
+// JobWatchHelper ...
+func JobWatchHelper(clientset *kubernetes.Clientset, namespace string, listOpts metav1.ListOptions) (watch.Interface, error) {
+	i := 0
+	watcher, err := clientset.BatchV1().Jobs(namespace).Watch(listOpts)
+	for {
+		if i > 20 {
+			return nil, errors.New("retries for acquiring job watcher exhasuted")
+		}
+		i++
+		time.Sleep(time.Second * 1)
+		if err != nil {
+			log.Println("------ Error in obtaining the job watcher ------")
+			watcher, err = clientset.BatchV1().Jobs(namespace).Watch(listOpts)
+			continue
+		}
+		break
+	}
+	return watcher, nil
+}
+
+// DeploymentWatchHelper ...
+func DeploymentWatchHelper(clientset *kubernetes.Clientset, namespace string, listOpts metav1.ListOptions) (watch.Interface, error) {
+	i := 0
+	watcher, err := clientset.AppsV1().Deployments(namespace).Watch(listOpts)
+	for {
+		if i > 20 {
+			return nil, errors.New("retries for acquiring deployment watcher exhasuted")
+		}
+		i++
+		time.Sleep(time.Second * 1)
+		if err != nil {
+			log.Println("------ Error in obtaining the deployment watcher ------")
+			watcher, err = clientset.AppsV1().Deployments(namespace).Watch(listOpts)
+			continue
+		}
+		break
+	}
+	return watcher, nil
 }
