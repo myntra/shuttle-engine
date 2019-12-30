@@ -1,5 +1,7 @@
 package types
 
+import "time"
+
 // YAMLFromRethink ...
 type YAMLFromRethink struct {
 	Name   string `json:"name"`
@@ -19,6 +21,8 @@ type Run struct {
 	Steps                 []Step                  `json:"steps" gorethink:"steps"`
 	KVPairsSavedOnSuccess []KVPairsSavedOnSuccess `json:"kvPairsSavedOnSuccess" gorethink:"kvPairsSavedOnSuccess"`
 	Status                string                  `json:"status" gorethink:"status"`
+	CreatedTime           time.Time               `json:"createdTime" gorethink:"createdTime"`
+	UpdatedTime           time.Time               `json:"updatedTime" gorethink:"updatedTime"`
 }
 
 // Step ...

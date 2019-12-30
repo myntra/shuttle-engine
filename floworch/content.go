@@ -1,6 +1,8 @@
 package main
 
 import (
+	"time"
+
 	"github.com/myntra/shuttle-engine/config"
 	"github.com/myntra/shuttle-engine/types"
 	gorethink "gopkg.in/gorethink/gorethink.v4"
@@ -39,6 +41,13 @@ func updateRunDetailsToDB(run *types.Run) (*types.Run, error) {
 		return run, err
 	}
 	defer rdbSession.Close()
+
+	if run.CreatedTime.IsZero() {
+		run.CreatedTime = time.Now()
+	}
+
+	run.UpdatedTime = time.Now()
+
 	_, err = gorethink.Table(run.Stage+"_runs").Insert(run, gorethink.InsertOpts{
 		Conflict: "update",
 	}).RunWrite(rdbSession)
