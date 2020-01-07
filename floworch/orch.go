@@ -190,6 +190,7 @@ func orchestrate(flowOrchRequest types.FlowOrchRequest, run *types.Run) string {
 			}
 		case <-timeout:
 			isEnd = true
+			hasWorkloadFailed = true
 			logger.Println("Timed out")
 		}
 	}
