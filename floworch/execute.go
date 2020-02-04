@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/myntra/shuttle-engine/helpers"
@@ -19,6 +20,7 @@ func executeHandler(w http.ResponseWriter, r *http.Request) {
 	// Get Content from DB
 	yamlFromDB, err := getContent(flowOrchRequest)
 	if err != nil {
+		fmt.Println("Error in fetching YAML from DB for "+flowOrchRequest.ID, flowOrchRequest.Stage)
 		helpers.PanicOnErrorAPI(err, w)
 		return
 	}
