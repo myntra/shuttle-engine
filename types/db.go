@@ -41,6 +41,7 @@ type Step struct {
 	IgnoreErrors          bool                    `yaml:"ignoreErrors" gorethink:"ignoreErrors"`
 	IsNonCritical         bool                    `yaml:"isNonCritical" gorethink:"isNonCritical"`
 	KVPairsSavedOnSuccess []KVPairsSavedOnSuccess `yaml:"kvPairsSavedOnSuccess" gorethink:"kvPairsSavedOnSuccess"`
+	Duration              int                     `yaml:"int" gorethink:"duration"`
 }
 
 // KVPairsSavedOnSuccess ...

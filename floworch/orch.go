@@ -130,7 +130,7 @@ func orchestrate(flowOrchRequest types.FlowOrchRequest, run *types.Run) string {
 								break
 							}
 							go func(index int) {
-								defer helpers.TimeTracker(EnableMetrics, time.Now(), false, flowOrchRequest.Stage, strconv.Itoa(run.Steps[index].ID), run.Steps[index].Name, run.Steps[index].UniqueKey, flowOrchRequest.Meta)
+								defer helpers.UpdateStepInfo(EnableMetrics, time.Now(), false, flowOrchRequest, run, index)
 
 								deleteChannelDetails := types.DeleteChannelDetails{
 									ID:            flowOrchRequest.ID,

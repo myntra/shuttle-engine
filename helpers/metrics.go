@@ -2,12 +2,15 @@ package helpers
 
 import (
 	"bytes"
-	"github.com/myntra/shuttle-engine/config"
 	"io/ioutil"
 	"log"
+	"math"
 	"net/http"
 	"strconv"
 	"time"
+
+	"github.com/myntra/shuttle-engine/config"
+	"github.com/myntra/shuttle-engine/types"
 )
 
 // TimeTracker : calculates the time taken by each step in any run
@@ -63,4 +66,13 @@ func pushBusinessMetrics(pushData string) {
 		log.Println("Error reading response body. ", err)
 		log.Printf("%s\n", body)
 	}
+}
+
+// UpdateStepInfo ...
+func UpdateStepInfo(enableMetrics bool, startTime time.Time, isTotalTimeMetrics bool, floworchRequest types.FlowOrchRequest, run *types.Run, stepIndex int) {
+	seconds := int(math.Round(time.Since(startTime).Seconds())) // diff => round => convert to int
+	run.Steps[stepIndex].Duration = seconds
+
+	step := run.Steps[stepIndex]
+	TimeTracker(enableMetrics, startTime, isTotalTimeMetrics, floworchRequest.Stage, strconv.Itoa(step.ID), step.Name, step.UniqueKey, floworchRequest.Meta)
 }
