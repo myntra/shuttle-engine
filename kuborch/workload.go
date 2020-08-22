@@ -17,6 +17,8 @@ import (
 	"github.com/myntra/shuttle-engine/helpers"
 	"github.com/myntra/shuttle-engine/types"
 
+	b64 "encoding/base64"
+
 	r "gopkg.in/gorethink/gorethink.v4"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -55,11 +57,22 @@ func executeWorkload(w http.ResponseWriter, req *http.Request) {
 
 	helpers.PanicOnErrorAPI(err, w)
 
-	if ClientConfigMap[step.K8SCluster].Clientset == nil {
-		helpers.PanicOnErrorAPI(fmt.Errorf("kuborch does not have the requested cluster configured - %s", step.K8SCluster), w)
+	if step.Meta[0].ChartName != "" {
+		for _, meta := range step.Meta {
+			path, err := setUpKubeConfig(meta.KubeConfig, meta.ChartName)
+			if err != nil {
+				go runHelm(path, meta.Namespace, workloadPath)
+			} else {
+				helpers.PrintErr(err)
+			}
+		}
+	} else {
+		if ClientConfigMap[step.K8SCluster].Clientset == nil {
+			helpers.PanicOnErrorAPI(fmt.Errorf("kuborch does not have the requested cluster configured - %s", step.K8SCluster), w)
+		}
+		go runKubeCTL(step.K8SCluster, step.UniqueKey, workloadPath)
 	}
 
-	go runKubeCTL(step.K8SCluster, step.UniqueKey, workloadPath)
 	eRes := helpers.Response{
 		State: "Workload triggered",
 		Code:  200,
@@ -220,4 +233,70 @@ func runKubeCTL(k8scluster, uniqueKey, workloadPath string) {
 		}
 	}
 
+}
+
+func setUpKubeConfig(kubeconfig string, chartname string) (string, error) {
+	decodedKubeConfig, err := b64.StdEncoding.DecodeString(kubeconfig)
+	if err != nil {
+		return "", err
+	}
+	filePath, err := createConfigFile(string([]byte(decodedKubeConfig)), chartname)
+	if err != nil {
+		return "", err
+	}
+	return filePath, err
+}
+
+func removeKubeConfig(kubeconfigpath string) error {
+	err := os.Remove(kubeconfigpath)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func createConfigFile(kubeconfig string, chartname string) (string, error) {
+	path := "~/.kube/" + chartname
+	_, err := os.Stat(path)
+
+	if os.IsNotExist(err) {
+		var file, err = os.Create("~/.kube/" + chartname)
+		if err != nil {
+			return "", err
+		}
+		defer file.Close()
+
+		_, err = file.WriteString(kubeconfig)
+		if err != nil {
+			return "", err
+		}
+		defer file.Close()
+	}
+	return path, err
+
+}
+
+func runHelm(kubeConfigPath string, chartName string, workloadPath string) error {
+	var installOrUpgrade string
+
+	cmd := exec.Command("helm", "--kubeconfig", kubeConfigPath, "status", chartName)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	err := cmd.Run()
+	if err != nil {
+		installOrUpgrade = "install"
+	} else {
+		installOrUpgrade = "upgrade"
+	}
+
+	cmd = exec.Command("helm", "--kubeconfig", kubeConfigPath, installOrUpgrade, chartName, "-f", workloadPath, "--wait")
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	err = cmd.Run()
+
+	err = removeKubeConfig(kubeConfigPath)
+	if err != nil {
+		return err
+	}
+	return nil
 }

@@ -55,4 +55,8 @@ type Meta struct {
 	Name           string      `yaml:"name" gorethink:"name"`
 	Value          interface{} `yaml:"value" gorethink:"value"`
 	ConvertedValue string      `yaml:"convertedValue" gorethink:"convertedValue"`
+	KubeConfig     string      `yaml:"kubeConfig" gorethink:"kubeConfig"`
+	ChartName      string      `yaml:"chartName" gorethink:"chartName"`
+	ChartVersion   string      `yaml:"chartVersion" gorethink:"chartVersion"`
+	Namespace      string      `yaml:"namespace" gorethink:"namespace"`
 }
