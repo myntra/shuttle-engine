@@ -57,14 +57,12 @@ func executeWorkload(w http.ResponseWriter, req *http.Request) {
 
 	helpers.PanicOnErrorAPI(err, w)
 
-	if step.Meta[0].ChartName != "" {
-		for _, meta := range step.Meta {
-			path, err := setUpKubeConfig(meta.KubeConfig, meta.ChartName)
-			if err != nil {
-				go runHelm(path, meta.Namespace, workloadPath)
-			} else {
-				helpers.PrintErr(err)
-			}
+	if step.ChartURL != "" {
+		path, err := setUpKubeConfig(step.KubeConfig, fmt.Sprintf("%s-%s", step.K8SCluster, step.ReleaseName))
+		if err != nil {
+			go runHelm(path, step.ChartURL, workloadPath, step.ReleaseName)
+		} else {
+			helpers.PrintErr(err)
 		}
 	} else {
 		if ClientConfigMap[step.K8SCluster].Clientset == nil {
@@ -235,12 +233,12 @@ func runKubeCTL(k8scluster, uniqueKey, workloadPath string) {
 
 }
 
-func setUpKubeConfig(kubeconfig string, chartname string) (string, error) {
+func setUpKubeConfig(kubeconfig string, filename string) (string, error) {
 	decodedKubeConfig, err := b64.StdEncoding.DecodeString(kubeconfig)
 	if err != nil {
 		return "", err
 	}
-	filePath, err := createConfigFile(string([]byte(decodedKubeConfig)), chartname)
+	filePath, err := createConfigFile(string([]byte(decodedKubeConfig)), filename)
 	if err != nil {
 		return "", err
 	}
@@ -276,10 +274,10 @@ func createConfigFile(kubeconfig string, chartname string) (string, error) {
 
 }
 
-func runHelm(kubeConfigPath string, chartName string, workloadPath string) error {
+func runHelm(kubeConfigPath string, chartURL string, workloadPath string, releaseName string) error {
 	var installOrUpgrade string
 
-	cmd := exec.Command("helm", "--kubeconfig", kubeConfigPath, "status", chartName)
+	cmd := exec.Command("helm", "--kubeconfig", kubeConfigPath, "status", releaseName)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	err := cmd.Run()
@@ -289,7 +287,7 @@ func runHelm(kubeConfigPath string, chartName string, workloadPath string) error
 		installOrUpgrade = "upgrade"
 	}
 
-	cmd = exec.Command("helm", "--kubeconfig", kubeConfigPath, installOrUpgrade, chartName, "-f", workloadPath, "--wait")
+	cmd = exec.Command("helm", "--kubeconfig", kubeConfigPath, installOrUpgrade, releaseName, "-f", workloadPath, chartURL, "--wait")
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	err = cmd.Run()

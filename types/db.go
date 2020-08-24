@@ -32,6 +32,9 @@ type Step struct {
 	StepTemplate          string                  `yaml:"stepTemplate" gorethink:"stepTemplate"`
 	Image                 string                  `yaml:"image" gorethink:"image"`
 	K8SCluster            string                  `yaml:"k8scluster" gorethink:"k8sclustername"`
+	ChartURL              string                  `json:"chartURL" gorethink:"chartURL"`
+	ReleaseName           string                  `json:"releaseName" gorethink:"releaseName"`
+	KubeConfig            string                  `json:"kubeConfig" gorethink:"kubeConfig"`
 	Meta                  []Meta                  `yaml:"meta" gorethink:"meta"`
 	Requires              []int                   `yaml:"requires" gorethink:"requires"`
 	CommitContainer       bool                    `yaml:"commitContainer" gorethink:"commitContainer"`
@@ -55,8 +58,4 @@ type Meta struct {
 	Name           string      `yaml:"name" gorethink:"name"`
 	Value          interface{} `yaml:"value" gorethink:"value"`
 	ConvertedValue string      `yaml:"convertedValue" gorethink:"convertedValue"`
-	KubeConfig     string      `yaml:"kubeConfig" gorethink:"kubeConfig"`
-	ChartName      string      `yaml:"chartName" gorethink:"chartName"`
-	ChartVersion   string      `yaml:"chartVersion" gorethink:"chartVersion"`
-	Namespace      string      `yaml:"namespace" gorethink:"namespace"`
 }
