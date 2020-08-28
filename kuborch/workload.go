@@ -57,18 +57,23 @@ func executeWorkload(w http.ResponseWriter, req *http.Request) {
 
 	helpers.PanicOnErrorAPI(err, w)
 
-	if step.ChartURL != "" {
-		path, err := setUpKubeConfig(step.KubeConfig, fmt.Sprintf("%s-%s", step.K8SCluster, step.ReleaseName))
+	var kubeConfigPath string
+	if step.KubeConfig != "" {
+		kubeConfigPath, err = setUpKubeConfig(step.KubeConfig, fmt.Sprintf("%s-%s", step.K8SCluster, step.ReleaseName))
 		if err != nil {
-			go runHelm(path, step.ChartURL, workloadPath, step.ReleaseName)
-		} else {
 			helpers.PrintErr(err)
 		}
+	} else {
+		kubeConfigPath = ClientConfigMap[step.K8SCluster].ConfigPath
+	}
+
+	if step.ChartURL != "" {
+		go runHelm(kubeConfigPath, step.ChartURL, workloadPath, step.ReleaseName, step.UniqueKey)
 	} else {
 		if ClientConfigMap[step.K8SCluster].Clientset == nil {
 			helpers.PanicOnErrorAPI(fmt.Errorf("kuborch does not have the requested cluster configured - %s", step.K8SCluster), w)
 		}
-		go runKubeCTL(step.K8SCluster, step.UniqueKey, workloadPath)
+		go runKubeCTL(kubeConfigPath, step.K8SCluster, step.UniqueKey, workloadPath)
 	}
 
 	eRes := helpers.Response{
@@ -95,7 +100,7 @@ func replaceVariables(yamlFromDB types.YAMLFromDB, step types.Step, workloadPath
 	return []byte(yamlFromDB.Config)
 }
 
-func runKubeCTL(k8scluster, uniqueKey, workloadPath string) {
+func runKubeCTL(kubeConfigPath, k8scluster, uniqueKey, workloadPath string) {
 	resChan := make(chan types.WorkloadResult)
 	go func(uniqueKey string) {
 		for {
@@ -113,7 +118,7 @@ func runKubeCTL(k8scluster, uniqueKey, workloadPath string) {
 	}(uniqueKey)
 	defer close(resChan)
 
-	cmd := exec.Command("kubectl", "--kubeconfig", ClientConfigMap[k8scluster].ConfigPath, "apply", "-f", workloadPath)
+	cmd := exec.Command("kubectl", "--kubeconfig", kubeConfigPath, "apply", "-f", workloadPath)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	err := cmd.Run()
@@ -274,7 +279,8 @@ func createConfigFile(kubeconfig string, chartname string) (string, error) {
 
 }
 
-func runHelm(kubeConfigPath string, chartURL string, workloadPath string, releaseName string) error {
+func runHelm(kubeConfigPath, chartURL, workloadPath, releaseName, uniqueKey string) error {
+
 	var installOrUpgrade string
 
 	cmd := exec.Command("helm", "--kubeconfig", kubeConfigPath, "status", releaseName)
