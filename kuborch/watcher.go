@@ -238,7 +238,7 @@ func DeploymentWatch(clientset *kubernetes.Clientset, resultChan chan types.Work
 					return
 				}
 			}
-		case <-time.After(180 * time.Second):
+		case <-time.After(300 * time.Second):
 			log.Println("------------------++")
 			log.Printf("Sending timeout for namespace:%s, label:%s\n", namespace, listOpts.LabelSelector)
 			resultChan <- types.WorkloadResult{
