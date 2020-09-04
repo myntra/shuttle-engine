@@ -37,6 +37,9 @@ type FlowOrchRequest struct {
 	Meta        map[string]string `json:"meta"`
 	ID          string            `json:"id"`
 	K8SCluster  string            `json:"k8scluster"`
+	ChartURL    string            `json:"chartURL"`
+	KubeConfig  string            `json:"kubeConfig"`
+	ReleaseName string            `json:"releaseName"`
 }
 
 // DeleteChannelDetails ...

@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -17,6 +18,8 @@ import (
 	"github.com/myntra/shuttle-engine/helpers"
 	"github.com/myntra/shuttle-engine/types"
 
+	b64 "encoding/base64"
+
 	r "gopkg.in/gorethink/gorethink.v4"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -25,6 +28,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/yaml"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/pkg/apis/core"
 )
 
@@ -55,11 +59,32 @@ func executeWorkload(w http.ResponseWriter, req *http.Request) {
 
 	helpers.PanicOnErrorAPI(err, w)
 
-	if ClientConfigMap[step.K8SCluster].Clientset == nil {
-		helpers.PanicOnErrorAPI(fmt.Errorf("kuborch does not have the requested cluster configured - %s", step.K8SCluster), w)
+	var kubeConfigPath string
+	if step.KubeConfig != "" {
+		kubeConfigPath, err = setUpKubeConfig(step.KubeConfig, fmt.Sprintf("%s-%s", step.K8SCluster, step.ReleaseName))
+		if err != nil {
+			helpers.PrintErr(err)
+		}
+	} else {
+		if ClientConfigMap[step.K8SCluster].Clientset == nil {
+			helpers.PanicOnErrorAPI(fmt.Errorf("kuborch does not have the requested cluster configured - %s", step.K8SCluster), w)
+		}
+		kubeConfigPath = ClientConfigMap[step.K8SCluster].ConfigPath
 	}
 
-	go runKubeCTL(step.K8SCluster, step.UniqueKey, workloadPath)
+	if step.ChartURL != "" {
+		go runHelm(kubeConfigPath, step.ChartURL, workloadPath, step.ReleaseName, step.UniqueKey)
+	} else {
+		var k8sclient *kubernetes.Clientset
+		if step.KubeConfig != "" {
+			k8sclient, err = CreateK8sClient(kubeConfigPath)
+			helpers.PanicOnErrorAPI(fmt.Errorf("Error in creating the k8s client with kubeconfig - %s", step.K8SCluster), w)
+		} else {
+			k8sclient = ClientConfigMap[step.K8SCluster].Clientset
+		}
+		go runKubeCTL(kubeConfigPath, step.K8SCluster, step.UniqueKey, workloadPath, k8sclient)
+	}
+
 	eRes := helpers.Response{
 		State: "Workload triggered",
 		Code:  200,
@@ -84,7 +109,7 @@ func replaceVariables(yamlFromDB types.YAMLFromDB, step types.Step, workloadPath
 	return []byte(yamlFromDB.Config)
 }
 
-func runKubeCTL(k8scluster, uniqueKey, workloadPath string) {
+func runKubeCTL(kubeConfigPath, k8scluster, uniqueKey, workloadPath string, k8sclient *kubernetes.Clientset) {
 	resChan := make(chan types.WorkloadResult)
 	go func(uniqueKey string) {
 		for {
@@ -102,7 +127,7 @@ func runKubeCTL(k8scluster, uniqueKey, workloadPath string) {
 	}(uniqueKey)
 	defer close(resChan)
 
-	cmd := exec.Command("kubectl", "--kubeconfig", ClientConfigMap[k8scluster].ConfigPath, "apply", "-f", workloadPath)
+	cmd := exec.Command("kubectl", "--kubeconfig", kubeConfigPath, "apply", "-f", workloadPath)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	err := cmd.Run()
@@ -173,13 +198,13 @@ func runKubeCTL(k8scluster, uniqueKey, workloadPath string) {
 			listOpts = metav1.ListOptions{
 				FieldSelector: fields.OneTermEqualSelector(core.ObjectNameField, structuredObj.GetName()).String(),
 			}
-			go JobWatch(ClientConfigMap[k8scluster].Clientset, watchChannel, namespace, listOpts)
+			go JobWatch(k8sclient, watchChannel, namespace, listOpts)
 		case "StatefulSet":
-			go StatefulSetWatch(ClientConfigMap[k8scluster].Clientset, watchChannel, namespace, listOpts)
+			go StatefulSetWatch(k8sclient, watchChannel, namespace, listOpts)
 		case "Service":
-			go ServiceWatch(ClientConfigMap[k8scluster].Clientset, watchChannel, namespace, listOpts)
+			go ServiceWatch(k8sclient, watchChannel, namespace, listOpts)
 		case "Deployment":
-			go DeploymentWatch(ClientConfigMap[k8scluster].Clientset, watchChannel, namespace, listOpts)
+			go DeploymentWatch(k8sclient, watchChannel, namespace, listOpts)
 		default:
 			log.Println("Unknown workload. Completed")
 		}
@@ -220,4 +245,100 @@ func runKubeCTL(k8scluster, uniqueKey, workloadPath string) {
 		}
 	}
 
+}
+
+func setUpKubeConfig(kubeconfig string, filename string) (string, error) {
+	decodedKubeConfig, err := b64.StdEncoding.DecodeString(kubeconfig)
+	if err != nil {
+		return "", err
+	}
+	filePath, err := createConfigFile(string([]byte(decodedKubeConfig)), filename)
+	if err != nil {
+		return "", err
+	}
+	return filePath, err
+}
+
+func removeKubeConfig(kubeconfigpath string) error {
+	err := os.Remove(kubeconfigpath)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func createConfigFile(kubeconfig string, chartname string) (string, error) {
+	path := "~/.kube/" + chartname
+	_, err := os.Stat(path)
+
+	if os.IsNotExist(err) {
+		var file, err = os.Create("~/.kube/" + chartname)
+		if err != nil {
+			return "", err
+		}
+		defer file.Close()
+
+		_, err = file.WriteString(kubeconfig)
+		if err != nil {
+			return "", err
+		}
+		defer file.Close()
+	}
+	return path, err
+
+}
+
+func runHelm(kubeConfigPath, chartURL, workloadPath, releaseName, uniqueKey string) error {
+	resChan := make(chan types.WorkloadResult)
+	go func(uniqueKey string) {
+		for {
+			log.Println("Waiting on result channel for " + uniqueKey)
+			select {
+			case wr := <-resChan:
+				log.Println("Sending floworch result for " + uniqueKey)
+				_, err := helpers.Post("http://localhost:5500/callback", wr, nil)
+				if err != nil {
+					log.Println(err)
+				}
+				return
+			}
+		}
+	}(uniqueKey)
+	defer close(resChan)
+	var installOrUpgrade string
+
+	cmd := exec.Command("helm", "--kubeconfig", kubeConfigPath, "status", releaseName)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	err := cmd.Run()
+	if err != nil {
+		installOrUpgrade = "install"
+	} else {
+		installOrUpgrade = "upgrade"
+	}
+
+	cmd = exec.Command("helm", "--kubeconfig", kubeConfigPath, installOrUpgrade, releaseName, "-f", workloadPath, chartURL, "--wait")
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	err = cmd.Run()
+	if err != nil {
+		resChan <- types.WorkloadResult{
+			UniqueKey: uniqueKey,
+			Result:    types.FAILED,
+			Details:   fmt.Sprintf("%s", cmd.Stderr),
+		}
+	} else {
+		resChan <- types.WorkloadResult{
+			UniqueKey: uniqueKey,
+			Result:    types.SUCCEEDED,
+			Details:   fmt.Sprintf("%s", cmd.Stdout),
+		}
+	}
+
+	err = removeKubeConfig(kubeConfigPath)
+	if err != nil {
+		return err
+	}
+	return nil
 }

@@ -118,6 +118,18 @@ func orchestrate(flowOrchRequest types.FlowOrchRequest, run *types.Run) string {
 								run.Steps[index].K8SCluster = flowOrchRequest.K8SCluster
 							}
 
+							if flowOrchRequest.ChartURL != "" {
+								run.Steps[index].ChartURL = flowOrchRequest.ChartURL
+							}
+
+							if flowOrchRequest.ReleaseName != "" {
+								run.Steps[index].ReleaseName = flowOrchRequest.ReleaseName
+							}
+
+							if flowOrchRequest.KubeConfig != "" {
+								run.Steps[index].KubeConfig = flowOrchRequest.KubeConfig
+							}
+
 							// sending failure/abort info ENV variable
 							run.Steps[index].Replacers["hasWorkloadFailed"] = strconv.FormatBool(hasWorkloadFailed)
 							run.Steps[index].Replacers["isExternalAbort"] = strconv.FormatBool(isExternalAbort)
