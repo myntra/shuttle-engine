@@ -16,8 +16,8 @@ type YAMLFromDB struct {
 
 // Run ...
 type Run struct {
-	ID                    string                  `json:"id" gorethink:"id"`
-	Stage                 string                  `json:"stage" gorethink:"stage"`
+	ID                    string                  `json:"id" gorethink:"id" form:"id"`
+	Stage                 string                  `json:"stage" gorethink:"stage" form:"stage"`
 	Steps                 []Step                  `json:"steps" gorethink:"steps"`
 	KVPairsSavedOnSuccess []KVPairsSavedOnSuccess `json:"kvPairsSavedOnSuccess" gorethink:"kvPairsSavedOnSuccess"`
 	Status                string                  `json:"status" gorethink:"status"`
