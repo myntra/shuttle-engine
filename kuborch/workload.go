@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -29,6 +30,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/util/homedir"
 	"k8s.io/kubernetes/pkg/apis/core"
 )
 
@@ -61,7 +63,8 @@ func executeWorkload(w http.ResponseWriter, req *http.Request) {
 
 	var kubeConfigPath string
 	if step.KubeConfig != "" {
-		kubeConfigPath, err = setUpKubeConfig(step.KubeConfig, fmt.Sprintf("%s-%s", step.K8SCluster, step.ReleaseName))
+		kubeConfigPath, err = setUpKubeConfig(step.KubeConfig, fmt.Sprintf("%s-%s", step.K8SCluster, step.UniqueKey))
+		log.Printf("Kubeconfig:%s", err)
 		if err != nil {
 			helpers.PrintErr(err)
 		}
@@ -268,23 +271,24 @@ func removeKubeConfig(kubeconfigpath string) error {
 }
 
 func createConfigFile(kubeconfig string, chartname string) (string, error) {
-	path := "~/.kube/" + chartname
+	path := filepath.Join(homedir.HomeDir(), ".kube", chartname)
 	_, err := os.Stat(path)
 
 	if os.IsNotExist(err) {
-		var file, err = os.Create("~/.kube/" + chartname)
+		file, err := os.Create(path)
+		log.Println("Create File")
 		if err != nil {
 			return "", err
 		}
-		defer file.Close()
-
+		log.Println("File Created")
 		_, err = file.WriteString(kubeconfig)
 		if err != nil {
 			return "", err
 		}
+		log.Println("Written ")
 		defer file.Close()
 	}
-	return path, err
+	return path, nil
 
 }
 
@@ -305,23 +309,41 @@ func runHelm(kubeConfigPath, chartURL, workloadPath, releaseName, uniqueKey stri
 		}
 	}(uniqueKey)
 	defer close(resChan)
+	defer removeKubeConfig(kubeConfigPath)
 	var installOrUpgrade string
 
 	cmd := exec.Command("helm", "--kubeconfig", kubeConfigPath, "status", releaseName)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
 	err := cmd.Run()
+	cmd.Wait()
 	if err != nil {
+		installOrUpgrade = "install"
+	} else if strings.Contains(fmt.Sprintf("%s", cmd.Stdout), "STATUS: failed") {
+		cmd = exec.Command("helm", "--kubeconfig", kubeConfigPath, "uninstall", releaseName)
+		cmd.Stdout = &stdout
+		cmd.Stderr = &stderr
+		err = cmd.Run()
+		cmd.Wait()
+		if err != nil {
+			resChan <- types.WorkloadResult{
+				UniqueKey: uniqueKey,
+				Result:    types.FAILED,
+				Details:   fmt.Sprintf("%s", cmd.Stderr),
+			}
+			return err
+		}
 		installOrUpgrade = "install"
 	} else {
 		installOrUpgrade = "upgrade"
 	}
 
 	cmd = exec.Command("helm", "--kubeconfig", kubeConfigPath, installOrUpgrade, releaseName, "-f", workloadPath, chartURL, "--wait")
-	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 	err = cmd.Run()
+	cmd.Wait()
 	if err != nil {
 		resChan <- types.WorkloadResult{
 			UniqueKey: uniqueKey,
@@ -336,9 +358,5 @@ func runHelm(kubeConfigPath, chartURL, workloadPath, releaseName, uniqueKey stri
 		}
 	}
 
-	err = removeKubeConfig(kubeConfigPath)
-	if err != nil {
-		return err
-	}
 	return nil
 }
