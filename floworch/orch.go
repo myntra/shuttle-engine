@@ -171,6 +171,17 @@ func orchestrate(flowOrchRequest types.FlowOrchRequest, run *types.Run) string {
 												logger.Printf("thread - %s - Workload has failed. Stopping in 5 seconds", run.Steps[index].Name)
 											}
 										}
+
+										if statusInChannel.Result == types.SUCCEEDED {
+											if run.Steps[index].ExtractBuildImage {
+												for _, singleMeta := range run.Steps[index].Meta {
+													if singleMeta.Name == "candidateImage" {
+														updateCandidateImage(singleMeta.Value, run)
+														break
+													}
+												}
+											}
+										}
 										run.Steps[index].Status = statusInChannel.Result
 										logger.Printf("thread - %s - Sleeping Done", run.Steps[index].Name)
 										if run.Steps[index].CommitContainer {

@@ -19,6 +19,7 @@ type Run struct {
 	ID                    string                  `json:"id" gorethink:"id" form:"id"`
 	Stage                 string                  `json:"stage" gorethink:"stage" form:"stage"`
 	Steps                 []Step                  `json:"steps" gorethink:"steps"`
+	CandidateImage        string                  `json:"candidateImage" gorethink:"candidateImage"`
 	KVPairsSavedOnSuccess []KVPairsSavedOnSuccess `json:"kvPairsSavedOnSuccess" gorethink:"kvPairsSavedOnSuccess"`
 	Status                string                  `json:"status" gorethink:"status"`
 	CreatedTime           time.Time               `json:"createdTime" gorethink:"createdTime"`
@@ -31,6 +32,7 @@ type Step struct {
 	Name                  string                  `yaml:"name" gorethink:"name"`
 	StepTemplate          string                  `yaml:"stepTemplate" gorethink:"stepTemplate"`
 	Image                 string                  `yaml:"image" gorethink:"image"`
+	ExtractBuildImage     bool                    `yaml:"extractBuildImage" gorethink:"extractBuildImage"`
 	K8SCluster            string                  `yaml:"k8scluster" gorethink:"k8sclustername"`
 	ChartURL              string                  `json:"chartURL" gorethink:"chartURL"`
 	ReleaseName           string                  `json:"releaseName" gorethink:"releaseName"`
