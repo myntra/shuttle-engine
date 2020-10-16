@@ -45,6 +45,7 @@ type Step struct {
 	IsNonCritical         bool                    `yaml:"isNonCritical" gorethink:"isNonCritical"`
 	KVPairsSavedOnSuccess []KVPairsSavedOnSuccess `yaml:"kvPairsSavedOnSuccess" gorethink:"kvPairsSavedOnSuccess"`
 	Duration              int                     `yaml:"int" gorethink:"duration"`
+	Timeout               string                  `yaml:"timeout" gorethink:"timeout"`
 }
 
 // KVPairsSavedOnSuccess ...

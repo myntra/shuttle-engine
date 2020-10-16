@@ -76,7 +76,7 @@ func executeWorkload(w http.ResponseWriter, req *http.Request) {
 	}
 
 	if step.ChartURL != "" {
-		go runHelm(kubeConfigPath, step.ChartURL, workloadPath, step.ReleaseName, step.UniqueKey)
+		go runHelm(kubeConfigPath, step.ChartURL, workloadPath, step.ReleaseName, step.UniqueKey, step.Timeout)
 	} else {
 		var k8sclient *kubernetes.Clientset
 		if step.KubeConfig != "" {
@@ -292,7 +292,7 @@ func createConfigFile(kubeconfig string, chartname string) (string, error) {
 
 }
 
-func runHelm(kubeConfigPath, chartURL, workloadPath, releaseName, uniqueKey string) error {
+func runHelm(kubeConfigPath, chartURL, workloadPath, releaseName, uniqueKey, timeout string) error {
 	resChan := make(chan types.WorkloadResult)
 	go func(uniqueKey string) {
 		for {
@@ -339,7 +339,7 @@ func runHelm(kubeConfigPath, chartURL, workloadPath, releaseName, uniqueKey stri
 		installOrUpgrade = "upgrade"
 	}
 
-	cmd = exec.Command("helm", "--kubeconfig", kubeConfigPath, installOrUpgrade, releaseName, "-f", workloadPath, chartURL, "--wait")
+	cmd = exec.Command("helm", "--kubeconfig", kubeConfigPath, installOrUpgrade, releaseName, "-f", workloadPath, chartURL, "--wait", "--timeout", timeout)
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 	err = cmd.Run()
