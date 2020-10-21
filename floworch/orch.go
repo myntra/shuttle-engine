@@ -176,7 +176,7 @@ func orchestrate(flowOrchRequest types.FlowOrchRequest, run *types.Run) string {
 											if run.Steps[index].ExtractBuildImage {
 												for _, singleMeta := range run.Steps[index].Meta {
 													if singleMeta.Name == "candidateImage" {
-														updateCandidateImage(singleMeta.Value, run)
+														updateCandidateImage(singleMeta.Value.(string), run)
 														break
 													}
 												}
