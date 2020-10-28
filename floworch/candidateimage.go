@@ -2,7 +2,7 @@ package main
 
 import "github.com/myntra/shuttle-engine/types"
 
-func updateCandidateImage(Value string, run *types.Run, parameter string) {
-	run.parameter = Value
+func updateKey(run *types.Run, parameter string, value string) {
+	run.parameter = value
 	updateRunDetailsToDB(run)
 }
