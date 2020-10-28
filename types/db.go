@@ -19,7 +19,6 @@ type Run struct {
 	ID                    string                  `json:"id" gorethink:"id" form:"id"`
 	Stage                 string                  `json:"stage" gorethink:"stage" form:"stage"`
 	Steps                 []Step                  `json:"steps" gorethink:"steps"`
-	CandidateImage        string                  `json:"candidateImage,omitempty" gorethink:"candidateImage,omitempty"`
 	KVPairsSavedOnSuccess []KVPairsSavedOnSuccess `json:"kvPairsSavedOnSuccess" gorethink:"kvPairsSavedOnSuccess"`
 	Status                string                  `json:"status" gorethink:"status"`
 	CreatedTime           time.Time               `json:"createdTime" gorethink:"createdTime"`
@@ -47,6 +46,7 @@ type Step struct {
 	IsNonCritical         bool                    `yaml:"isNonCritical" gorethink:"isNonCritical"`
 	KVPairsSavedOnSuccess []KVPairsSavedOnSuccess `yaml:"kvPairsSavedOnSuccess" gorethink:"kvPairsSavedOnSuccess"`
 	Duration              int                     `yaml:"int" gorethink:"duration"`
+	CandidateImage        string                  `json:"candidateImage,omitempty" gorethink:"candidateImage,omitempty"`
 }
 
 // KVPairsSavedOnSuccess ...

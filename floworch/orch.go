@@ -174,12 +174,7 @@ func orchestrate(flowOrchRequest types.FlowOrchRequest, run *types.Run) string {
 
 										if statusInChannel.Result == types.SUCCEEDED {
 											if run.Steps[index].ExtractBuildImage {
-												for _, singleMeta := range run.Steps[index].Meta {
-													if singleMeta.Name == "candidateImage" {
-														updateCandidateImage(singleMeta.Value.(string), run)
-														break
-													}
-												}
+												updateCandidateImage(run.Steps[index].CandidateImage, run, "CandidateImage")
 											}
 										}
 										run.Steps[index].Status = statusInChannel.Result
