@@ -173,8 +173,9 @@ func orchestrate(flowOrchRequest types.FlowOrchRequest, run *types.Run) string {
 										}
 
 										if statusInChannel.Result == types.SUCCEEDED {
-											if run.Steps[index].ExtractBuildImage {
-												updateKey(run, "CandidateImage", run.Steps[index].CandidateImage)
+											if run.Steps[index].CandidateImage != "" {
+												run.CandidateImage = run.Steps[index].CandidateImage
+												updateRunDetailsToDB(run)
 											}
 										}
 										run.Steps[index].Status = statusInChannel.Result
