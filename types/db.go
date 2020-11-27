@@ -19,8 +19,8 @@ type Run struct {
 	ID                    string                  `json:"id" gorethink:"id" form:"id"`
 	Stage                 string                  `json:"stage" gorethink:"stage" form:"stage"`
 	Steps                 []Step                  `json:"steps" gorethink:"steps"`
-	CandidateImage        string                  `json:"candidateImage,omitempty" gorethink:"candidateImage,omitempty"`
 	KVPairsSavedOnSuccess []KVPairsSavedOnSuccess `json:"kvPairsSavedOnSuccess" gorethink:"kvPairsSavedOnSuccess"`
+	CandidateImage        string                  `json:"candidateImage,omitempty" gorethink:"candidateImage,omitempty"`
 	Status                string                  `json:"status" gorethink:"status"`
 	CreatedTime           time.Time               `json:"createdTime" gorethink:"createdTime"`
 	UpdatedTime           time.Time               `json:"updatedTime" gorethink:"updatedTime"`
@@ -32,7 +32,6 @@ type Step struct {
 	Name                  string                  `yaml:"name" gorethink:"name"`
 	StepTemplate          string                  `yaml:"stepTemplate" gorethink:"stepTemplate"`
 	Image                 string                  `yaml:"image" gorethink:"image"`
-	CandidateImage        string                  `yaml:"candidateImage" gorethink:"candidateImage"`
 	K8SCluster            string                  `yaml:"k8scluster" gorethink:"k8sclustername"`
 	ChartURL              string                  `json:"chartURL" gorethink:"chartURL"`
 	ReleaseName           string                  `json:"releaseName" gorethink:"releaseName"`
@@ -47,6 +46,7 @@ type Step struct {
 	IsNonCritical         bool                    `yaml:"isNonCritical" gorethink:"isNonCritical"`
 	KVPairsSavedOnSuccess []KVPairsSavedOnSuccess `yaml:"kvPairsSavedOnSuccess" gorethink:"kvPairsSavedOnSuccess"`
 	Duration              int                     `yaml:"int" gorethink:"duration"`
+	CandidateImage        string                  `json:"candidateImage,omitempty" gorethink:"candidateImage,omitempty"`
 }
 
 // KVPairsSavedOnSuccess ...
