@@ -130,6 +130,10 @@ func orchestrate(flowOrchRequest types.FlowOrchRequest, run *types.Run) string {
 								run.Steps[index].KubeConfig = flowOrchRequest.KubeConfig
 							}
 
+							if flowOrchRequest.Namespace != "" {
+								run.Steps[index].Namespace = flowOrchRequest.Namespace
+							}
+
 							// sending failure/abort info ENV variable
 							run.Steps[index].Replacers["hasWorkloadFailed"] = strconv.FormatBool(hasWorkloadFailed)
 							run.Steps[index].Replacers["isExternalAbort"] = strconv.FormatBool(isExternalAbort)
