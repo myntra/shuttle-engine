@@ -41,6 +41,7 @@ type FlowOrchRequest struct {
 	KubeConfig  string            `json:"kubeConfig"`
 	ReleaseName string            `json:"releaseName"`
 	Timeout     string            `json:"timeout"`
+	Namespace   string            `json:"namespace"`
 }
 
 // DeleteChannelDetails ...

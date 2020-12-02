@@ -134,6 +134,10 @@ func orchestrate(flowOrchRequest types.FlowOrchRequest, run *types.Run) string {
 								run.Steps[index].KubeConfig = flowOrchRequest.KubeConfig
 							}
 
+							if flowOrchRequest.Namespace != "" {
+								run.Steps[index].Namespace = flowOrchRequest.Namespace
+							}
+
 							// sending failure/abort info ENV variable
 							run.Steps[index].Replacers["hasWorkloadFailed"] = strconv.FormatBool(hasWorkloadFailed)
 							run.Steps[index].Replacers["isExternalAbort"] = strconv.FormatBool(isExternalAbort)
@@ -173,6 +177,12 @@ func orchestrate(flowOrchRequest types.FlowOrchRequest, run *types.Run) string {
 											} else {
 												hasWorkloadFailed = true
 												logger.Printf("thread - %s - Workload has failed. Stopping in 5 seconds", run.Steps[index].Name)
+											}
+										}
+
+										if statusInChannel.Result == types.SUCCEEDED {
+											if run.Steps[index].CandidateImage != "" {
+												run.CandidateImage = run.Steps[index].CandidateImage
 											}
 										}
 										run.Steps[index].Status = statusInChannel.Result
