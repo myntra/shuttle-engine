@@ -47,6 +47,7 @@ type Step struct {
 	KVPairsSavedOnSuccess []KVPairsSavedOnSuccess `yaml:"kvPairsSavedOnSuccess" gorethink:"kvPairsSavedOnSuccess"`
 	Duration              int                     `yaml:"int" gorethink:"duration"`
 	CandidateImage        string                  `json:"candidateImage,omitempty" gorethink:"candidateImage,omitempty"`
+	Namespace             string                  `yaml:"namespace" gorethink:"namespace"`
 }
 
 // KVPairsSavedOnSuccess ...
