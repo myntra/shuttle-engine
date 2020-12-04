@@ -24,6 +24,7 @@ type Run struct {
 	Status                string                  `json:"status" gorethink:"status"`
 	CreatedTime           time.Time               `json:"createdTime" gorethink:"createdTime"`
 	UpdatedTime           time.Time               `json:"updatedTime" gorethink:"updatedTime"`
+	StatusMessage         string                  `json:"statusMessage" gorethink:"statusMessage"`
 }
 
 // Step ...

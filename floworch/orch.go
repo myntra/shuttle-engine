@@ -181,6 +181,7 @@ func orchestrate(flowOrchRequest types.FlowOrchRequest, run *types.Run) string {
 												run.CandidateImage = run.Steps[index].CandidateImage
 											}
 										}
+										run.StatusMessage = statusInChannel.Details
 										run.Steps[index].Status = statusInChannel.Result
 										logger.Printf("thread - %s - Sleeping Done", run.Steps[index].Name)
 										if run.Steps[index].CommitContainer {
