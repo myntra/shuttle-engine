@@ -54,22 +54,13 @@ func AbortRunHandler(w http.ResponseWriter, r *http.Request) {
 
 // UpdateAbortStatus ...
 func UpdateAbortStatus(ard types.Abort, stage string) error {
-	rdbSession, err := gorethink.Connect(gorethink.ConnectOpts{
-		Address:  config.GetConfig().RethinkHost,
-		Database: "shuttleservices",
-	})
-	if err != nil {
-		return err
-	}
-	defer rdbSession.Close()
-
 	_, err = gorethink.Table(stage+"_aborts").Insert(map[string]interface{}{
 		"id":          ard.ID,
 		"createdOn":   time.Now().Format(time.ANSIC),
 		"description": ard.Description,
 	}, gorethink.InsertOpts{
 		Conflict: "update",
-	}).RunWrite(rdbSession)
+	}).RunWrite(config.RethinkSession)
 
 	return err
 }
