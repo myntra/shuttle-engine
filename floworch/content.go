@@ -10,17 +10,9 @@ import (
 
 func getContent(flowOrchRequest types.FlowOrchRequest) (types.YAMLFromDB, error) {
 	var yamlFromDB types.YAMLFromDB
-	rdbSession, err := gorethink.Connect(gorethink.ConnectOpts{
-		Address:  config.GetConfig().RethinkHost,
-		Database: "shuttleservices",
-	})
-	if err != nil {
-		return yamlFromDB, err
-	}
-	defer rdbSession.Close()
 	cursor, err := gorethink.Table(flowOrchRequest.Stage + "_configs").Filter(map[string]interface{}{
 		"id": flowOrchRequest.StageFilter,
-	}).Run(rdbSession)
+	}).Run(config.RethinkSession)
 	if err != nil {
 		return yamlFromDB, err
 	}
@@ -33,15 +25,6 @@ func getContent(flowOrchRequest types.FlowOrchRequest) (types.YAMLFromDB, error)
 }
 
 func updateRunDetailsToDB(run *types.Run) (*types.Run, error) {
-	rdbSession, err := gorethink.Connect(gorethink.ConnectOpts{
-		Address:  config.GetConfig().RethinkHost,
-		Database: "shuttleservices",
-	})
-	if err != nil {
-		return run, err
-	}
-	defer rdbSession.Close()
-
 	if run.CreatedTime.IsZero() {
 		run.CreatedTime = time.Now()
 	}
@@ -50,7 +33,7 @@ func updateRunDetailsToDB(run *types.Run) (*types.Run, error) {
 
 	_, err = gorethink.Table(run.Stage+"_runs").Insert(run, gorethink.InsertOpts{
 		Conflict: "update",
-	}).RunWrite(rdbSession)
+	}).RunWrite(config.RethinkSession)
 	if err != nil {
 		return run, err
 	}
@@ -64,19 +47,11 @@ func updateRunDetailsToDB(run *types.Run) (*types.Run, error) {
 func GetAbortDetails(id string, stage string) (types.Abort, error) {
 
 	var abort types.Abort
-	rdbSession, err := gorethink.Connect(gorethink.ConnectOpts{
-		Address:  config.GetConfig().RethinkHost,
-		Database: "shuttleservices",
-	})
-	if err != nil {
-		return abort, err
-	}
-	defer rdbSession.Close()
 	cursor, err := gorethink.Table(stage + "_aborts").
 		Filter(map[string]interface{}{
 			"id": id,
 		}).
-		Run(rdbSession)
+		Run(config.RethinkSession)
 	err = cursor.One(&abort)
 
 	return abort, err

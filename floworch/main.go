@@ -29,6 +29,11 @@ func main() {
 		return
 	}
 
+	if err := config.InitDatabaseSession(); err != nil {
+		log.Println(err)
+		return
+	}
+
 	EnableMetrics, err = strconv.ParseBool(os.Getenv("ENABLE_METRICS"))
 	if err != nil {
 		log.Println(err)

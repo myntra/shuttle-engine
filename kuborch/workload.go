@@ -38,15 +38,9 @@ func executeWorkload(w http.ResponseWriter, req *http.Request) {
 	step := types.Step{}
 	helpers.PanicOnErrorAPI(helpers.ParseRequest(req, &step), w)
 	// Fetch yaml from predefined_steps table
-	rdbSession, err := r.Connect(r.ConnectOpts{
-		Address:  config.GetConfig().RethinkHost,
-		Database: "shuttleservices",
-	})
-	helpers.PanicOnErrorAPI(err, w)
-	defer rdbSession.Close()
 	cursor, err := r.Table("predefined_steps").Filter(map[string]interface{}{
 		"name": step.StepTemplate,
-	}).Run(rdbSession)
+	}).Run(config.RethinkSession)
 	helpers.PanicOnErrorAPI(err, w)
 	defer cursor.Close()
 	var yamlFromDB types.YAMLFromDB
