@@ -316,9 +316,7 @@ func runHelm(kubeConfigPath, workloadPath string, step types.Step) error {
 	cmd.Wait()
 
 	//failing the Run if pending releases exist
-	stdOutBytes := *cmd.Stdout
-	stdOutString := stdOutBytes.String()
-	if stdOutString != "" {
+	if stdout.String() != "" {
 		resChan <- types.WorkloadResult{
 			UniqueKey: step.UniqueKey,
 			Result:    types.FAILED,
