@@ -50,6 +50,10 @@ func main() {
 		log.Println(err)
 		return
 	}
+	if err := config.InitDatabaseSession(); err != nil {
+		log.Println(err)
+		return
+	}
 	os.RemoveAll("./yaml")
 	_ = os.Mkdir("./yaml", 0777)
 	//Example for Running with configPath is ./kuborch -configPath=clustername:~/kube/config -configPath=clustername1:~/kube/config1
