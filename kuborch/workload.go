@@ -322,7 +322,7 @@ func runHelm(kubeConfigPath, workloadPath string, step types.Step) error {
 			Result:    types.FAILED,
 			Details:   "Pending Releases Exist",
 		}
-		return
+		return nil
 	}
 	// if err != nil {
 	// 	installOrUpgrade = "install"
