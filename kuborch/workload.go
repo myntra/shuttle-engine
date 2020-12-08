@@ -38,15 +38,9 @@ func executeWorkload(w http.ResponseWriter, req *http.Request) {
 	step := types.Step{}
 	helpers.PanicOnErrorAPI(helpers.ParseRequest(req, &step), w)
 	// Fetch yaml from predefined_steps table
-	rdbSession, err := r.Connect(r.ConnectOpts{
-		Address:  config.GetConfig().RethinkHost,
-		Database: "shuttleservices",
-	})
-	helpers.PanicOnErrorAPI(err, w)
-	defer rdbSession.Close()
 	cursor, err := r.Table("predefined_steps").Filter(map[string]interface{}{
 		"name": step.StepTemplate,
-	}).Run(rdbSession)
+	}).Run(config.RethinkSession)
 	helpers.PanicOnErrorAPI(err, w)
 	defer cursor.Close()
 	var yamlFromDB types.YAMLFromDB
@@ -312,36 +306,46 @@ func runHelm(kubeConfigPath, workloadPath string, step types.Step) error {
 	}(step.UniqueKey)
 	defer close(resChan)
 	defer removeKubeConfig(kubeConfigPath)
-	var installOrUpgrade string
+	//var installOrUpgrade string
 
-	cmd := exec.Command("helm", "--kubeconfig", kubeConfigPath, "-n", step.Namespace, "status", step.ReleaseName)
+	cmd := exec.Command("helm", "list", "--filter", step.ReleaseName, "--pending", "-n", step.Namespace)
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 	err := cmd.Run()
 	cmd.Wait()
-	if err != nil {
-		installOrUpgrade = "install"
-	} else if strings.Contains(fmt.Sprintf("%s", cmd.Stdout), "STATUS: failed") {
-		cmd = exec.Command("helm", "--kubeconfig", kubeConfigPath, "-n", step.Namespace, "uninstall", step.ReleaseName)
-		cmd.Stdout = &stdout
-		cmd.Stderr = &stderr
-		err = cmd.Run()
-		cmd.Wait()
-		if err != nil {
-			resChan <- types.WorkloadResult{
-				UniqueKey: step.UniqueKey,
-				Result:    types.FAILED,
-				Details:   fmt.Sprintf("%s", cmd.Stderr),
-			}
-			return err
-		}
-		installOrUpgrade = "install"
-	} else {
-		installOrUpgrade = "upgrade"
-	}
 
-	cmd = exec.Command("helm", "--kubeconfig", kubeConfigPath, "-n", step.Namespace, installOrUpgrade, step.ReleaseName, "-f", workloadPath, step.ChartURL, "--wait", "--timeout", step.Timeout)
+	//failing the Run if pending releases exist
+	if stdout.String() != "" {
+		resChan <- types.WorkloadResult{
+			UniqueKey: step.UniqueKey,
+			Result:    types.FAILED,
+			Details:   "Pending Releases Exist",
+		}
+		return nil
+	}
+	// if err != nil {
+	// 	installOrUpgrade = "install"
+	// } else if strings.Contains(fmt.Sprintf("%s", cmd.Stdout), "STATUS: failed") {
+	// 	cmd = exec.Command("helm", "--kubeconfig", kubeConfigPath, "-n", step.Namespace, "uninstall", step.ReleaseName)
+	// 	cmd.Stdout = &stdout
+	// 	cmd.Stderr = &stderr
+	// 	err = cmd.Run()
+	// 	cmd.Wait()
+	// 	if err != nil {
+	// 		resChan <- types.WorkloadResult{
+	// 			UniqueKey: step.UniqueKey,
+	// 			Result:    types.FAILED,
+	// 			Details:   fmt.Sprintf("%s", cmd.Stderr),
+	// 		}
+	// 		return err
+	// 	}
+	// 	installOrUpgrade = "install"
+	// } else {
+	// 	installOrUpgrade = "upgrade"
+	// }
+
+	cmd = exec.Command("helm", "--kubeconfig", kubeConfigPath, "-n", step.Namespace, "upgrade", "--install", step.ReleaseName, "-f", workloadPath, step.ChartURL, "--atomic", "--wait", "--timeout", step.Timeout)
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 	err = cmd.Run()
