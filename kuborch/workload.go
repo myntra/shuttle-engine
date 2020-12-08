@@ -308,19 +308,27 @@ func runHelm(kubeConfigPath, workloadPath string, step types.Step) error {
 	defer removeKubeConfig(kubeConfigPath)
 	//var installOrUpgrade string
 
-	cmd := exec.Command("helm", "--kubeconfig", kubeConfigPath, "list", "--filter", step.ReleaseName, "--pending", "-n", step.Namespace)
+	cmd := exec.Command("helm", "--kubeconfig", kubeConfigPath, "list", "--filter", step.ReleaseName, "--pending", "-n", step.Namespace, "-q")
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 	err := cmd.Run()
 	cmd.Wait()
 
-	//failing the Run if pending releases exist
-	if stdout.String() != "" {
+	if err != nil {
 		resChan <- types.WorkloadResult{
 			UniqueKey: step.UniqueKey,
 			Result:    types.FAILED,
-			Details:   "Pending Releases Exist",
+			Details:   fmt.Sprintf("Failed to get pending release, Error:%s", err),
+		}
+		return nil
+	}
+	//failing the Run if pending releases exist
+	if fmt.Sprintf("%s", cmd.Stdout) != "" {
+		resChan <- types.WorkloadResult{
+			UniqueKey: step.UniqueKey,
+			Result:    types.FAILED,
+			Details:   fmt.Sprintf("Pending Releases Exist\nOutput:%s", cmd.Stdout),
 		}
 		return nil
 	}
