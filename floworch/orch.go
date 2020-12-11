@@ -122,6 +122,10 @@ func orchestrate(flowOrchRequest types.FlowOrchRequest, run *types.Run) string {
 								run.Steps[index].ChartURL = flowOrchRequest.ChartURL
 							}
 
+							if flowOrchRequest.Timeout != "" {
+								run.Steps[index].Timeout = flowOrchRequest.Timeout
+							}
+
 							if flowOrchRequest.ReleaseName != "" {
 								run.Steps[index].ReleaseName = flowOrchRequest.ReleaseName
 							}

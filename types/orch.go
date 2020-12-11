@@ -40,6 +40,7 @@ type FlowOrchRequest struct {
 	ChartURL    string            `json:"chartURL"`
 	KubeConfig  string            `json:"kubeConfig"`
 	ReleaseName string            `json:"releaseName"`
+	Timeout     string            `json:"timeout"`
 	Namespace   string            `json:"namespace"`
 }
 
