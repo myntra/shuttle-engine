@@ -25,7 +25,9 @@ func convertMetaTagsToReplacers(step *types.Step, flowOrchRequest types.FlowOrch
 			if strings.Contains(convertedValue, "\n") {
 				convertedValue = "|\n" + twelveSpaces + strings.Replace(convertedValue, "\n", "\n"+twelveSpaces, -1)
 			}
-
+		case []byte:
+			yml, _ := yaml.JSONToYAML(step.Meta[parser].Value.([]byte))
+			convertedValue = string(string(yml))
 		case map[string]interface{}:
 			convertedValueInBytes, err := json.Marshal(step.Meta[parser].Value)
 			if err != nil {
