@@ -16,6 +16,7 @@ func convertMetaTagsToReplacers(step *types.Step, flowOrchRequest types.FlowOrch
 	// Database level meta tags being converted to Replacers
 	for parser := 0; parser < len(step.Meta); parser++ {
 		convertedValue := ""
+		fmt.Printf("Type:%T", step.Meta[parser].Value)
 		switch step.Meta[parser].Value.(type) {
 		case string:
 			// Twelve Space Hack for multi-line strings
@@ -27,7 +28,7 @@ func convertMetaTagsToReplacers(step *types.Step, flowOrchRequest types.FlowOrch
 			}
 		case []byte:
 			fmt.Println("bytes")
-			convertedValue = string(string(step.Meta[parser].Value.([]byte)))
+			convertedValue = string(step.Meta[parser].Value.([]byte))
 		case map[string]interface{}:
 			convertedValueInBytes, err := json.Marshal(step.Meta[parser].Value)
 			if err != nil {
