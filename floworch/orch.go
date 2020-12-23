@@ -193,7 +193,7 @@ func orchestrate(flowOrchRequest types.FlowOrchRequest, run *types.Run) string {
 										}
 
 										if len(statusInChannel.Details) > 0 {
-											run.StatusMessage = run.StatusMessage + fmt.Sprintf("Step - %s\\n%s\\n", run.Steps[index].Name, statusInChannel.Details)
+											run.StatusMessage = run.StatusMessage + fmt.Sprintf("Step - %s, %s\n", run.Steps[index].Name, statusInChannel.Details)
 											run.Steps[index].StatusMessage = fmt.Sprintf("%s", statusInChannel.Details)
 										}
 										saveKVPairs(run.Steps[index], run)
