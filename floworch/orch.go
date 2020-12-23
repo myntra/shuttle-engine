@@ -192,7 +192,7 @@ func orchestrate(flowOrchRequest types.FlowOrchRequest, run *types.Run) string {
 											imageList[index] = run.Steps[index].UniqueKey + ":" + run.Steps[index].Name
 										}
 
-										if len(statusInChannel.Details) != 0 {
+										if len(statusInChannel.Details) > 0 {
 											run.StatusMessage = run.StatusMessage + fmt.Sprintf("Step - %s:\n%s\n", run.Steps[index].Name, statusInChannel.Details)
 											run.Steps[index].StatusMessage = fmt.Sprintf("%s", statusInChannel.Details)
 										}
