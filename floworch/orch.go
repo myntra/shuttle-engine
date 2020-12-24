@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"strconv"
@@ -189,6 +190,11 @@ func orchestrate(flowOrchRequest types.FlowOrchRequest, run *types.Run) string {
 										logger.Printf("thread - %s - Sleeping Done", run.Steps[index].Name)
 										if run.Steps[index].CommitContainer {
 											imageList[index] = run.Steps[index].UniqueKey + ":" + run.Steps[index].Name
+										}
+
+										if len(statusInChannel.Details) > 0 {
+											run.StatusMessage = run.StatusMessage + fmt.Sprintf("Step - %s, %s\n", run.Steps[index].Name, statusInChannel.Details)
+											run.Steps[index].StatusMessage = fmt.Sprintf("%s", statusInChannel.Details)
 										}
 										saveKVPairs(run.Steps[index], run)
 										close(MapOfDeleteChannelDetails[run.Steps[index].UniqueKey].DeleteChannel)

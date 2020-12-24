@@ -24,6 +24,7 @@ type Run struct {
 	Status                string                  `json:"status" gorethink:"status"`
 	CreatedTime           time.Time               `json:"createdTime" gorethink:"createdTime"`
 	UpdatedTime           time.Time               `json:"updatedTime" gorethink:"updatedTime"`
+	StatusMessage         string                  `json:"statusMessage,omitempty" gorethink:"statusMessage,omitempty"`
 }
 
 // Step ...
@@ -40,6 +41,7 @@ type Step struct {
 	Requires              []int                   `yaml:"requires" gorethink:"requires"`
 	CommitContainer       bool                    `yaml:"commitContainer" gorethink:"commitContainer"`
 	Status                string                  `yaml:"status" gorethink:"status"`
+	StatusMessage         string                  `json:"statusMessage,omitempty" gorethink:"statusMessage,omitempty"`
 	UniqueKey             string                  `yaml:"uniqueKey" gorethink:"uniqueKey"`
 	Replacers             map[string]string       `yaml:"replacers" gorethink:"replacers"`
 	IgnoreErrors          bool                    `yaml:"ignoreErrors" gorethink:"ignoreErrors"`
