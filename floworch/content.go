@@ -52,6 +52,7 @@ func GetAbortDetails(id string, stage string) (types.Abort, error) {
 			"id": id,
 		}).
 		Run(config.RethinkSession)
+	defer cursor.Close()
 	err = cursor.One(&abort)
 
 	return abort, err
