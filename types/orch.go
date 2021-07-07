@@ -32,16 +32,17 @@ type WorkloadResult struct {
 
 // FlowOrchRequest ...
 type FlowOrchRequest struct {
-	Stage       string            `json:"stage"`
-	StageFilter string            `json:"stageFilter"`
-	Meta        map[string]string `json:"meta"`
-	ID          string            `json:"id"`
-	K8SCluster  string            `json:"k8scluster"`
-	ChartURL    string            `json:"chartURL"`
-	KubeConfig  string            `json:"kubeConfig"`
-	ReleaseName string            `json:"releaseName"`
-	Timeout     string            `json:"timeout"`
-	Namespace   string            `json:"namespace"`
+	Stage            string            `json:"stage"`
+	StageFilter      string            `json:"stageFilter"`
+	Meta             map[string]string `json:"meta"`
+	ID               string            `json:"id"`
+	K8SCluster       string            `json:"k8scluster"`
+	ChartURL         string            `json:"chartURL"`
+	KubeConfig       string            `json:"kubeConfig"`
+	ReleaseName      string            `json:"releaseName"`
+	Timeout          string            `json:"timeout"`
+	Namespace        string            `json:"namespace"`
+	VolumeBasedBuild bool              `json:"volumeBasedBuild"`
 }
 
 // DeleteChannelDetails ...

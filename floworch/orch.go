@@ -31,6 +31,7 @@ func orchestrate(flowOrchRequest types.FlowOrchRequest, run *types.Run) string {
 	hasWorkloadFailed := false
 	isExternalAbort := false
 	abortDescription := ""
+	pvcList := make(map[string]int)
 	for (len(completedSteps) != len(run.Steps)) && !isEnd {
 		select {
 		case <-tick:
@@ -101,6 +102,16 @@ func orchestrate(flowOrchRequest types.FlowOrchRequest, run *types.Run) string {
 							}
 						}
 						if !foundAnIncompleteRequiredStep {
+							if flowOrchRequest.VolumeBasedBuild {
+								pvcName, err2 := GetPVC(index, run, flowOrchRequest, completedSteps)
+								if err2 != nil {
+									log.Printf("Pvc Not created : %s", err2)
+									return types.FAILED
+								}
+								run.Steps[index].Replacers["boundedPvcName"] = pvcName
+								pvcList[pvcName] += 1
+							}
+
 							if run.Steps[index].Image != "" {
 								if imageIndex, err := strconv.Atoi(run.Steps[index].Image); err == nil {
 									run.Steps[index].Image = imageList[imageIndex]
