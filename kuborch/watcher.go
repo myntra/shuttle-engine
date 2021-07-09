@@ -311,17 +311,15 @@ func PvcWatch(clientset *kubernetes.Clientset, resultChan chan types.WorkloadRes
 				}
 
 				pvcStatusValue := pvcStatus(string(pvc.Status.Phase))
-				resultChan <- pvcStatusValue
-
 				if pvcStatusValue.Result == types.FAILED || pvcStatusValue.Result == types.SUCCEEDED {
+					resultChan <- pvcStatusValue
 					return
 				}
 
 			case watch.Modified:
 				pvcStatusValue := pvcStatus(string(pvc.Status.Phase))
-				resultChan <- pvcStatusValue
-
 				if pvcStatusValue.Result == types.FAILED || pvcStatusValue.Result == types.SUCCEEDED {
+					resultChan <- pvcStatusValue
 					return
 				}
 

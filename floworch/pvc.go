@@ -117,7 +117,7 @@ func createPVC(flowOrchRequest types.FlowOrchRequest, pvctype int, sourcePvc str
 				return "", errors.New("failed in creating pvc")
 			}
 			return pvcStep.UniqueKey, nil
-		case <-time.After(30 * time.Second):
+		case <-time.After(30 * time.Minute):
 			return "", errors.New("timeout: failed in creating pvc")
 		}
 	}
