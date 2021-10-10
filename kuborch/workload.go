@@ -76,7 +76,6 @@ func executeWorkload(w http.ResponseWriter, req *http.Request) {
 	if step.ChartURL != "" {
 		go runHelm(kubeConfigPath, workloadPath, step)
 	} else if step.IsCommand {
-		log.Println("Do nothing so far")
 		var restClient *rest.Config
 		var k8sclient *kubernetes.Clientset
 		if step.KubeConfig != "" {
@@ -85,7 +84,6 @@ func executeWorkload(w http.ResponseWriter, req *http.Request) {
 		} else {
 			restClient = ClientConfigMap[step.K8SCluster].RestConfig
 			k8sclient = ClientConfigMap[step.K8SCluster].Clientset
-			log.Println("Based on clientset")
 		}
 		runCommand(restClient, k8sclient, kubeConfigPath, workloadPath, step)
 	} else {
