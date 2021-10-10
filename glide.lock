@@ -1,8 +1,10 @@
-hash: b7d16483962713f53e5b3dabb1c808f57eacb769bf604592d25f58e4d5fd28f8
-updated: 2019-12-11T18:01:34.077771+05:30
+hash: b4d310ff67c60a6df34e1e944783960b4784a1cb28d8be3610a47e542504611c
+updated: 2021-10-08T06:33:16.019439+05:30
 imports:
 - name: github.com/cenkalti/backoff
   version: f756bc9a37f808627c8c1b26d2d6ea40c468440b
+- name: github.com/docker/spdystream
+  version: dbc715126c0e3fa07721879c6d265b2b82c71e5b
 - name: github.com/ghodss/yaml
   version: 0ca9ea5df5451ffdf184b4428c902747c2c11cd7
 - name: github.com/go-errors/errors
@@ -42,6 +44,10 @@ imports:
   version: 6633656539c1639d9d78127b7d47c622b5d7b6dc
 - name: github.com/json-iterator/go
   version: 13f86432b882000a51c6e610c620974462691a97
+- name: github.com/moby/spdystream
+  version: dbc715126c0e3fa07721879c6d265b2b82c71e5b
+  subpackages:
+  - spdy
 - name: github.com/opentracing/opentracing-go
   version: 6c572c00d1830223701e155de97408483dfcd14a
   subpackages:
@@ -152,9 +158,12 @@ imports:
   - pkg/util/clock
   - pkg/util/errors
   - pkg/util/framer
+  - pkg/util/httpstream
+  - pkg/util/httpstream/spdy
   - pkg/util/intstr
   - pkg/util/json
   - pkg/util/net
+  - pkg/util/remotecommand
   - pkg/util/runtime
   - pkg/util/sets
   - pkg/util/validation
@@ -163,6 +172,7 @@ imports:
   - pkg/util/yaml
   - pkg/version
   - pkg/watch
+  - third_party/forked/golang/netutil
   - third_party/forked/golang/reflect
 - name: k8s.io/client-go
   version: 23781f4d6632d88e869066eaebb743857aa1ef9b
@@ -211,8 +221,11 @@ imports:
   - tools/clientcmd/api/v1
   - tools/metrics
   - tools/reference
+  - tools/remotecommand
   - transport
+  - transport/spdy
   - util/cert
+  - util/exec
   - util/flowcontrol
   - util/homedir
   - util/integer

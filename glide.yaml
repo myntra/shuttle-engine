@@ -22,3 +22,5 @@ import:
   version: v1.0.0
 - package: github.com/go-errors/errors
   version: v1.0.1
+- package: github.com/docker/spdystream
+  version: ^0.2.0

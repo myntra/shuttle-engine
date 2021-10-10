@@ -12,6 +12,7 @@ import (
 	"github.com/myntra/shuttle-engine/config"
 	"github.com/myntra/shuttle-engine/helpers"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 )
 
@@ -42,6 +43,7 @@ var myConfigList configsList
 //ClientConfig ...
 type ClientConfig struct {
 	Clientset  *kubernetes.Clientset
+	RestConfig *rest.Config
 	ConfigPath string
 }
 
@@ -75,7 +77,7 @@ func main() {
 			helpers.FailOnErr(err, nil)
 			Clientset, err = kubernetes.NewForConfig(cfg)
 			helpers.FailOnErr(err, nil)
-			ClientConfigMap[configPathSplit[0]] = ClientConfig{Clientset: Clientset, ConfigPath: configPathSplit[1]}
+			ClientConfigMap[configPathSplit[0]] = ClientConfig{Clientset: Clientset, ConfigPath: configPathSplit[1], RestConfig: cfg}
 		}
 	}
 	log.SetFlags(log.LstdFlags | log.Lshortfile)

@@ -2,6 +2,7 @@ package main
 
 import (
 	"k8s.io/client-go/kubernetes"
+	restclient "k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 )
 
@@ -17,4 +18,19 @@ func CreateK8sClient(configPath string) (*kubernetes.Clientset, error) {
 		return nil, err
 	}
 	return clientset, nil
+}
+
+func CreateRestK8Client(configPath string) (*restclient.Config, *kubernetes.Clientset, error) {
+
+	cfg, err := clientcmd.BuildConfigFromFlags("", configPath)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	clientset, err := kubernetes.NewForConfig(cfg)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return cfg, clientset, err
 }

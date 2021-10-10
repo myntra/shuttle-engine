@@ -31,6 +31,7 @@ type Run struct {
 type Step struct {
 	ID                    int                     `yaml:"id" gorethink:"id"`
 	Name                  string                  `yaml:"name" gorethink:"name"`
+	IsCommand             bool                    `yaml:"isCommand" gorethink:"isCommand"`
 	StepTemplate          string                  `yaml:"stepTemplate" gorethink:"stepTemplate"`
 	Image                 string                  `yaml:"image" gorethink:"image"`
 	K8SCluster            string                  `yaml:"k8scluster" gorethink:"k8sclustername"`

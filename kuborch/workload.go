@@ -23,6 +23,7 @@ import (
 
 	r "gopkg.in/gorethink/gorethink.v4"
 
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/fields"
@@ -30,6 +31,9 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/remotecommand"
 	"k8s.io/client-go/util/homedir"
 	"k8s.io/kubernetes/pkg/apis/core"
 )
@@ -71,6 +75,19 @@ func executeWorkload(w http.ResponseWriter, req *http.Request) {
 
 	if step.ChartURL != "" {
 		go runHelm(kubeConfigPath, workloadPath, step)
+	} else if step.IsCommand {
+		log.Println("Do nothing so far")
+		var restClient *rest.Config
+		var k8sclient *kubernetes.Clientset
+		if step.KubeConfig != "" {
+			restClient, k8sclient, err = CreateRestK8Client(kubeConfigPath)
+			helpers.PanicOnErrorAPI(fmt.Errorf("Error in creating the k8s client with kubeconfig - %s", step.K8SCluster), w)
+		} else {
+			restClient = ClientConfigMap[step.K8SCluster].RestConfig
+			k8sclient = ClientConfigMap[step.K8SCluster].Clientset
+			log.Println("Based on clientset")
+		}
+		runCommand(restClient, k8sclient, kubeConfigPath, workloadPath, step)
 	} else {
 		var k8sclient *kubernetes.Clientset
 		if step.KubeConfig != "" {
@@ -353,4 +370,106 @@ func runHelm(kubeConfigPath, workloadPath string, step types.Step) error {
 	}
 
 	return nil
+}
+
+func runCommand(restClient *rest.Config, clientset *kubernetes.Clientset, kubeConfigPath, workloadPath string, step types.Step) {
+	log.Println(step.UniqueKey)
+	resChan := make(chan types.WorkloadResult)
+	go func(uniqueKey string) {
+		for {
+			log.Println("Waiting on result channel for " + uniqueKey)
+			select {
+			case wr := <-resChan:
+				log.Println("Sending floworch result for " + uniqueKey)
+				_, err := helpers.Post("http://localhost:5500/callback", wr, nil)
+				if err != nil {
+					log.Println(err)
+				}
+				return
+			}
+		}
+	}(step.UniqueKey)
+	defer close(resChan)
+	defer removeKubeConfig(kubeConfigPath)
+
+	fileByte, err := ioutil.ReadFile(workloadPath)
+	if err != nil {
+		resChan <- types.WorkloadResult{
+			UniqueKey: step.UniqueKey,
+			Result:    types.FAILED,
+			Details:   fmt.Sprintf("Failed to read command, Error:%s\n", err),
+		}
+		return
+	}
+	command := string(fileByte)
+
+	// Get namespace, pod and container info from Meta
+	metaMap := make(map[string]string)
+
+	for _, metaObject := range step.Meta {
+		metaMap[metaObject.Name] = fmt.Sprintf("%v", metaObject.Value)
+	}
+
+	fmt.Println("Executing", command)
+
+	req := clientset.CoreV1().RESTClient().Post().
+		Resource("pods").
+		Name(metaMap["pod"]).
+		Namespace(metaMap["namespace"]).
+		SubResource("exec")
+	option := &v1.PodExecOptions{
+		Command:   []string{"bash", "-c", command},
+		Container: metaMap["container"],
+		Stdin:     false,
+		Stdout:    true,
+		Stderr:    true,
+		TTY:       false,
+	}
+	req.VersionedParams(
+		option,
+		scheme.ParameterCodec,
+	)
+	cmd, err := remotecommand.NewSPDYExecutor(restClient, "POST", req.URL())
+	if err != nil {
+		log.Println("Failed in command execution")
+		log.Println(err)
+		if err != nil {
+			resChan <- types.WorkloadResult{
+				UniqueKey: step.UniqueKey,
+				Result:    types.FAILED,
+				Details:   fmt.Sprintf("Failed to read command, Error:%s\n", err),
+			}
+		}
+
+		return
+	}
+
+	var stdout, stderr bytes.Buffer
+
+	err = cmd.Stream(remotecommand.StreamOptions{
+		Stdout: &stdout,
+		Stderr: &stderr,
+		Tty:    false,
+	})
+
+	if err != nil {
+		log.Println(err)
+		log.Println(stderr.Bytes())
+	} else {
+		log.Println(stdout.Bytes())
+	}
+
+	if err != nil {
+		resChan <- types.WorkloadResult{
+			UniqueKey: step.UniqueKey,
+			Result:    types.FAILED,
+			Details:   fmt.Sprintf("%s", err),
+		}
+	} else {
+		resChan <- types.WorkloadResult{
+			UniqueKey: step.UniqueKey,
+			Result:    types.SUCCEEDED,
+			Details:   fmt.Sprintf("%s", "success"),
+		}
+	}
 }
