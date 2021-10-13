@@ -5,16 +5,20 @@ import:
 - package: gopkg.in/gorethink/gorethink.v4
   version: v4.0.0
 - package: gopkg.in/yaml.v2
-  version: v2.2.1
+  version: v2.2.4
 - package: k8s.io/api
+  version: v0.17.2
   subpackages:
   - batch/v1
   - core/v1
+- package: k8s.io/kubernetes/pkg/apis
+  verson: v0.17.2
 - package: k8s.io/apimachinery
+  version: v0.17.2
   subpackages:
   - pkg/apis/meta/v1
 - package: k8s.io/client-go
-  version: v7.0.0
+  version: v0.17.2
   subpackages:
   - kubernetes
   - tools/clientcmd
@@ -23,4 +27,4 @@ import:
 - package: github.com/go-errors/errors
   version: v1.0.1
 - package: github.com/docker/spdystream
-  version: ^0.2.0
+  version: v0.2.0

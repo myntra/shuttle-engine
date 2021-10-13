@@ -82,12 +82,13 @@ func executeWorkload(w http.ResponseWriter, req *http.Request) {
 			restClient, k8sclient, err = CreateRestK8Client(kubeConfigPath)
 			if err != nil {
 				helpers.PanicOnErrorAPI(fmt.Errorf("Error in creating the k8s client with kubeconfig - %s", step.K8SCluster), w)
+				return
 			}
 		} else {
 			restClient = ClientConfigMap[step.K8SCluster].RestConfig
 			k8sclient = ClientConfigMap[step.K8SCluster].Clientset
 		}
-		runCommand(restClient, k8sclient, kubeConfigPath, workloadPath, step)
+		go runCommand(restClient, k8sclient, kubeConfigPath, workloadPath, step)
 	} else {
 		var k8sclient *kubernetes.Clientset
 		if step.KubeConfig != "" {

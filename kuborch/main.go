@@ -69,7 +69,7 @@ func main() {
 		helpers.FailOnErr(err, nil)
 		Clientset, err = kubernetes.NewForConfig(cfg)
 		helpers.FailOnErr(err, nil)
-		ClientConfigMap["default"] = ClientConfig{Clientset: Clientset, ConfigPath: defaultConfigPath}
+		ClientConfigMap["default"] = ClientConfig{Clientset: Clientset, ConfigPath: defaultConfigPath, RestConfig: cfg}
 	} else {
 		for _, singleConfigPath := range myConfigList {
 			configPathSplit := strings.Split(singleConfigPath, ":")
