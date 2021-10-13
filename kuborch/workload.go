@@ -35,7 +35,6 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/remotecommand"
 	"k8s.io/client-go/util/homedir"
-	"k8s.io/kubernetes/pkg/apis/core"
 )
 
 func executeWorkload(w http.ResponseWriter, req *http.Request) {
@@ -181,8 +180,7 @@ func runKubeCTL(kubeConfigPath, k8scluster, uniqueKey, workloadPath string, k8sc
 		log.Println("-----------------------------")
 		log.Println("raw: ", string(ext.Raw))
 
-		versions := &runtime.VersionedObjects{}
-		obj, gvk, err := unstructured.UnstructuredJSONScheme.Decode(ext.Raw, nil, versions)
+		obj, gvk, err := unstructured.UnstructuredJSONScheme.Decode(ext.Raw, nil, nil)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -211,7 +209,7 @@ func runKubeCTL(kubeConfigPath, k8scluster, uniqueKey, workloadPath string, k8sc
 		switch workloadKind {
 		case "Job":
 			listOpts = metav1.ListOptions{
-				FieldSelector: fields.OneTermEqualSelector(core.ObjectNameField, structuredObj.GetName()).String(),
+				FieldSelector: fields.OneTermEqualSelector("metadata.name", structuredObj.GetName()).String(),
 			}
 			go JobWatch(k8sclient, watchChannel, namespace, listOpts)
 		case "StatefulSet":
