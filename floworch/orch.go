@@ -143,24 +143,31 @@ func orchestrate(flowOrchRequest types.FlowOrchRequest, run *types.Run) string {
 							run.Steps[index].Replacers["hasWorkloadFailed"] = strconv.FormatBool(hasWorkloadFailed)
 							run.Steps[index].Replacers["isExternalAbort"] = strconv.FormatBool(isExternalAbort)
 							run.Steps[index].Replacers["abortDescription"] = abortDescription
+
+							// Channel creation before sending the request, to avoid fast responses causing
+							// the race condition before channel is set
+							deleteChannelDetails := types.DeleteChannelDetails{
+								ID:            flowOrchRequest.ID,
+								Stage:         flowOrchRequest.Stage,
+								DeleteChannel: make(chan types.WorkloadResult),
+								IgnoreErrors:  run.Steps[index].IgnoreErrors,
+								CreationTime:  time.Now(),
+							}
+							MapOfDeleteChannelDetails[run.Steps[index].UniqueKey] = &deleteChannelDetails
+
 							_, err := helpers.Post("http://localhost:5600/executeworkload", run.Steps[index], nil)
 							if err != nil {
 								logger.Printf("thread - %s - Workload API has failed. Stopping in 5 seconds", run.Steps[index].Name)
 								hasWorkloadFailed = true
 								wasThereAnAPIError = true
+								close(MapOfDeleteChannelDetails[run.Steps[index].UniqueKey].DeleteChannel)
+								delete(MapOfDeleteChannelDetails, run.Steps[index].UniqueKey)
+
 								break
 							}
 							go func(index int) {
 								defer helpers.UpdateStepInfo(EnableMetrics, time.Now(), false, flowOrchRequest, run, index)
 
-								deleteChannelDetails := types.DeleteChannelDetails{
-									ID:            flowOrchRequest.ID,
-									Stage:         flowOrchRequest.Stage,
-									DeleteChannel: make(chan types.WorkloadResult),
-									IgnoreErrors:  run.Steps[index].IgnoreErrors,
-									CreationTime:  time.Now(),
-								}
-								MapOfDeleteChannelDetails[run.Steps[index].UniqueKey] = &deleteChannelDetails
 								logger.Printf("thread - %s - Started Delete Channel", run.Steps[index].Name)
 								logger.Println(run.Steps[index].UniqueKey)
 								logger.Println(MapOfDeleteChannelDetails)
