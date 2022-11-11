@@ -31,16 +31,16 @@ func updateRunDetailsToDB(run *types.Run) (*types.Run, error) {
 	run.UpdatedTime = time.Now()
 
 	if !DoesRunExists(run) {
-		_, err = gorethink.Table(run.Stage+"_runs").Insert(run, gorethink.InsertOpts{
+		_, err := gorethink.Table(run.Stage+"_runs").Insert(run, gorethink.InsertOpts{
 			Conflict: "update",
 		}).RunWrite(config.RethinkSession)
 	} else {
 		_, err := gorethink.Table(run.Stage + "_runs").Filter(map[string]interface{}{
 			"id": run.ID,
 		}).Update(run).RunWrite(config.RethinkSession)
-	}
-	if err != nil {
-		return run, err
+		if err != nil {
+			return run, err
+		}
 	}
 	return run, nil
 }
