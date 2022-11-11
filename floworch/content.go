@@ -49,8 +49,8 @@ func DoesRunExists(run *types.Run) bool {
 	var dbrun *types.Run
 	cursor, _ := gorethink.Table(run.Stage + "_runs").
 		Filter(map[string]interface{}{
-			"id": run.Id,
-		}).Run(RethinkSession)
+			"id": run.ID,
+		}).Run(config.RethinkSession)
 	err := cursor.One(&dbrun)
 	return err == nil
 }
