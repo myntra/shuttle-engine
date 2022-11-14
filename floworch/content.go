@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/myntra/shuttle-engine/config"
@@ -14,6 +15,7 @@ func getContent(flowOrchRequest types.FlowOrchRequest) (types.YAMLFromDB, error)
 		"id": flowOrchRequest.StageFilter,
 	}).Run(config.RethinkSession)
 	if err != nil {
+		fmt.out
 		return yamlFromDB, err
 	}
 	defer cursor.Close()
@@ -46,6 +48,7 @@ func updateRunDetailsToDB(run *types.Run) (*types.Run, error) {
 		}
 	}
 	return run, nil
+
 }
 
 func DoesRunExists(run *types.Run) bool {
