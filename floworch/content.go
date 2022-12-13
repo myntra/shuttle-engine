@@ -10,7 +10,7 @@ import (
 
 func getContent(flowOrchRequest types.FlowOrchRequest) (types.YAMLFromDB, error) {
 	var yamlFromDB types.YAMLFromDB
-	cursor, err := gorethink.Table(flowOrchRequest.Stage + "_configs").GetAllByIndex("id": flowOrchRequest.StageFilter).Run(config.RethinkSession)
+	cursor, err := gorethink.Table(flowOrchRequest.Stage+"_configs").GetAllByIndex("id", flowOrchRequest.StageFilter).Run(config.RethinkSession)
 	if err != nil {
 		return yamlFromDB, err
 	}
@@ -55,7 +55,7 @@ func DoesRunExists(run *types.Run) bool {
 // GetAbortDetails ...
 func GetAbortDetails(id string, stage string) (types.Abort, error) {
 	var abort types.Abort
-	cursor, err := gorethink.Table(stage + "_aborts").GetAllByIndex("id", id).Run(config.RethinkSession)
+	cursor, err := gorethink.Table(stage+"_aborts").GetAllByIndex("id", id).Run(config.RethinkSession)
 	defer cursor.Close()
 	err = cursor.One(&abort)
 
