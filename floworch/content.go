@@ -10,9 +10,7 @@ import (
 
 func getContent(flowOrchRequest types.FlowOrchRequest) (types.YAMLFromDB, error) {
 	var yamlFromDB types.YAMLFromDB
-	cursor, err := gorethink.Table(flowOrchRequest.Stage + "_configs").Filter(map[string]interface{}{
-		"id": flowOrchRequest.StageFilter,
-	}).Run(config.RethinkSession)
+	cursor, err := gorethink.Table(flowOrchRequest.Stage+"_configs").GetAllByIndex("id", flowOrchRequest.StageFilter).Run(config.RethinkSession)
 	if err != nil {
 		return yamlFromDB, err
 	}
@@ -38,9 +36,7 @@ func updateRunDetailsToDB(run *types.Run) (*types.Run, error) {
 			return run, err
 		}
 	} else {
-		_, err := gorethink.Table(run.Stage + "_runs").Filter(map[string]interface{}{
-			"id": run.ID,
-		}).Update(run).RunWrite(config.RethinkSession)
+		_, err := gorethink.Table(run.Stage+"_runs").GetAllByIndex("id", run.ID).Update(run).RunWrite(config.RethinkSession)
 		if err != nil {
 			return run, err
 		}
@@ -51,23 +47,15 @@ func updateRunDetailsToDB(run *types.Run) (*types.Run, error) {
 
 func DoesRunExists(run *types.Run) bool {
 	var dbrun *types.Run
-	cursor, _ := gorethink.Table(run.Stage + "_runs").
-		Filter(map[string]interface{}{
-			"id": run.ID,
-		}).Run(config.RethinkSession)
+	cursor, _ := gorethink.Table(run.Stage+"_runs").GetAllByIndex("id", run.ID).Run(config.RethinkSession)
 	err := cursor.One(&dbrun)
 	return err == nil
 }
 
 // GetAbortDetails ...
 func GetAbortDetails(id string, stage string) (types.Abort, error) {
-
 	var abort types.Abort
-	cursor, err := gorethink.Table(stage + "_aborts").
-		Filter(map[string]interface{}{
-			"id": id,
-		}).
-		Run(config.RethinkSession)
+	cursor, err := gorethink.Table(stage+"_aborts").GetAllByIndex("id", id).Run(config.RethinkSession)
 	defer cursor.Close()
 	err = cursor.One(&abort)
 
