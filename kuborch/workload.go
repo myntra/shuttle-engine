@@ -331,6 +331,8 @@ func runHelm(kubeConfigPath, workloadPath string, step types.Step) error {
 	cmd.Stderr = &stderr
 	err := cmd.Run()
 	cmd.Wait()
+	fmt.println(cmd.Stdout)
+	fmt.println(cmd.Stderr)
 
 	if err != nil {
 		resChan <- types.WorkloadResult{
