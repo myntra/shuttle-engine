@@ -325,6 +325,7 @@ func runHelm(kubeConfigPath, workloadPath string, step types.Step) error {
 	//var installOrUpgrade string
 
 	cmd := exec.Command("helm", "--kubeconfig", kubeConfigPath, "list", "--filter", step.ReleaseName, "--pending", "-n", step.Namespace, "-q")
+	fmt.println("Pending release cmd:" + " helm" + "--kubeconfig" + kubeConfigPath + "list" + "--filter" + step.ReleaseName + "--pending" + "-n" + step.Namespace + "-q")
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
