@@ -8,6 +8,8 @@ import (
 
 	"github.com/myntra/shuttle-engine/types"
 	appsv1 "k8s.io/api/apps/v1"
+	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/kubernetes"
@@ -251,6 +253,106 @@ func DeploymentWatch(clientset *kubernetes.Clientset, resultChan chan types.Work
 	}
 }
 
+func PvcWatch(clientset *kubernetes.Clientset, resultChan chan types.WorkloadResult, namespace string, listOpts metav1.ListOptions) {
+	watcher, err := GetWatcher(clientset, namespace, listOpts, "pvc")
+	if err != nil {
+		log.Println("[ ", listOpts.FieldSelector, "] -- Failure in creating the watcher --")
+		resultChan <- types.WorkloadResult{
+			Result:  types.FAILED,
+			Details: err.Error(),
+			Kind:    "PersistentVolumeClaim",
+		}
+		return
+	}
+	maxClaimedQuant := resource.MustParse("200Gi")
+
+	ch := watcher.ResultChan()
+	defer watcher.Stop()
+	var totalClaimedQuant resource.Quantity
+	for {
+		select {
+		case event := <-ch:
+			if event.Object == nil {
+				log.Println("[ ", listOpts.FieldSelector, "] -- Received nil event from closed channel, refreshing channel --")
+				watcher, err = GetWatcher(clientset, namespace, listOpts, "pvc")
+				if err != nil {
+					resultChan <- types.WorkloadResult{
+						Result:  types.FAILED,
+						Details: err.Error(),
+						Kind:    "PersistentVolumeClaim",
+					}
+					return
+				}
+				ch = watcher.ResultChan()
+				continue
+			}
+			pvc, ok := event.Object.(*v1.PersistentVolumeClaim)
+			if !ok {
+				resultChan <- types.WorkloadResult{
+					Result:  types.FAILED,
+					Details: "event object not created",
+					Kind:    "PersistentVolumeClaim",
+				}
+				return
+			}
+			quant := pvc.Spec.Resources.Requests[v1.ResourceStorage]
+			switch event.Type {
+			case watch.Added:
+				totalClaimedQuant.Add(quant)
+				log.Printf("PVC %s added, claim size %s\n", pvc.Name, quant.String())
+				if totalClaimedQuant.Cmp(maxClaimedQuant) == 1 {
+					log.Printf("\nClaim overage reached: max %s at %s", maxClaimedQuant.String(), totalClaimedQuant.String())
+					resultChan <- types.WorkloadResult{
+						Result:  types.FAILED,
+						Details: "Claim overage reached",
+						Kind:    "PersistentVolumeClaim",
+					}
+					return
+				}
+
+				pvcStatusValue := pvcStatus(string(pvc.Status.Phase))
+				if pvcStatusValue.Result == types.FAILED || pvcStatusValue.Result == types.SUCCEEDED {
+					resultChan <- pvcStatusValue
+					return
+				}
+
+			case watch.Modified:
+				pvcStatusValue := pvcStatus(string(pvc.Status.Phase))
+				if pvcStatusValue.Result == types.FAILED || pvcStatusValue.Result == types.SUCCEEDED {
+					resultChan <- pvcStatusValue
+					return
+				}
+
+			case watch.Deleted:
+				quant := pvc.Spec.Resources.Requests[v1.ResourceStorage]
+				totalClaimedQuant.Sub(quant)
+				log.Printf("PVC %s removed, size %s\n", pvc.Name, quant.String())
+
+				if totalClaimedQuant.Cmp(maxClaimedQuant) <= 0 {
+					log.Printf("Claim usage normal: max %s at %s",
+						maxClaimedQuant.String(),
+						totalClaimedQuant.String(),
+					)
+					log.Println("*** Taking action ***")
+				}
+				return
+			case watch.Error:
+				log.Printf("watcher error encountered %s ", pvc.Name)
+			}
+		case <-time.After(180 * time.Second):
+			log.Println("[ ", listOpts.FieldSelector, "] Timeout for Job !!")
+			log.Println("[ ", listOpts.FieldSelector, "] Stopping Poll")
+			resultChan <- types.WorkloadResult{
+				Result:  types.FAILED,
+				Details: "timeout",
+				Kind:    "PersistentVolumeClaim",
+			}
+			return
+		}
+	}
+
+}
+
 // GetWatcher ...
 // Retries every second
 func GetWatcher(clientset *kubernetes.Clientset, namespace string, listOpts metav1.ListOptions, workloadType string) (watch.Interface, error) {
@@ -283,6 +385,47 @@ func GetWorkloadWatcher(clientset *kubernetes.Clientset, namespace string, listO
 		watcher, err = clientset.BatchV1().Jobs(namespace).Watch(listOpts)
 	case "deployment":
 		watcher, err = clientset.AppsV1().Deployments(namespace).Watch(listOpts)
+	case "pvc":
+		watcher, err = clientset.CoreV1().PersistentVolumeClaims(namespace).Watch(listOpts)
+
 	}
 	return watcher, err
+}
+
+func pvcStatus(statusOfPvc string) types.WorkloadResult {
+	if statusOfPvc == "Bound" {
+		return types.WorkloadResult{
+			Result:  types.SUCCEEDED,
+			Details: "PVC added",
+			Kind:    "PersistentVolumeClaim",
+		}
+	}
+	if statusOfPvc == "Pending" {
+		return types.WorkloadResult{
+			Result:  types.QUEUED,
+			Details: "PVC pending",
+			Kind:    "PersistentVolumeClaim",
+		}
+	}
+	if statusOfPvc == "Available" {
+		return types.WorkloadResult{
+			Result:  types.INPROGRESS,
+			Details: "PVC available",
+			Kind:    "PersistentVolumeClaim",
+		}
+	}
+	if statusOfPvc == "Failed" {
+		return types.WorkloadResult{
+			Result:  types.FAILED,
+			Details: "PVC failed",
+			Kind:    "PersistentVolumeClaim",
+		}
+	}
+
+	return types.WorkloadResult{
+		Result:  types.SUCCEEDED,
+		Details: "PVC released",
+		Kind:    "PersistentVolumeClaim",
+	}
+
 }

@@ -218,6 +218,8 @@ func runKubeCTL(kubeConfigPath, k8scluster, uniqueKey, workloadPath string, k8sc
 			go ServiceWatch(k8sclient, watchChannel, namespace, listOpts)
 		case "Deployment":
 			go DeploymentWatch(k8sclient, watchChannel, namespace, listOpts)
+		case "PersistentVolumeClaim":
+			go PvcWatch(k8sclient, watchChannel, namespace, listOpts)
 		default:
 			log.Println("Unknown workload. Completed")
 		}
